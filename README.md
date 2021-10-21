@@ -1,16 +1,5 @@
-# etwowconnect2
+# Unofficial Etwow Connect Application
 
-A new Flutter project.
+This app connects to Etwow GT SE and can set settings including unlocking full speed (use on private roads).
 
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
-
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+![image](https://user-images.githubusercontent.com/51708585/138268452-5137dee9-cb88-4038-ab9f-faa92d5e071f.png)
