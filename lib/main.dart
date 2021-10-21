@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -48,25 +50,101 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  final _flutterReactiveBle = FlutterReactiveBle();
+  final _serviceId = Uuid.parse("0000ffe0-0000-1000-8000-00805f9b34fb");
+  final _serviceIdRead = Uuid.parse("0000ffe1-0000-1000-8000-00805f9b34fb");
+  final _characteristicId = Uuid.parse("0000ffe1-0000-1000-8000-00805f9b34fb");
+  bool? locked;
+  bool? lights;
+  String? _id;
+  ConnectionStateUpdate? _connectionState;
 
-  void _incrementCounter() async {
-    if (await Permission.location.request().isGranted) {
-      final flutterReactiveBle = FlutterReactiveBle();
-      flutterReactiveBle.scanForDevices(
-          withServices: [], scanMode: ScanMode.lowLatency).listen((device) {
-        print(device);
+  bool get _connected =>
+      _connectionState?.connectionState == DeviceConnectionState.connected;
+
+  void initState() {
+    super.initState();
+    () async {
+      final granted = await Permission.location.request().isGranted;
+      if (!granted) {
+        return;
+      }
+      _flutterReactiveBle.scanForDevices(withServices: []).listen((device) {
+        if (device.name.contains("E-TWOW")) {
+          setState(() {
+            _id = device.id;
+          });
+          listenToDevice(device);
+        }
+      });
+    }();
+  }
+
+  void listenToDevice(DiscoveredDevice device) {
+    _flutterReactiveBle
+        .connectToDevice(id: device.id)
+        .listen((connectionState) {
+      setState(() {
+        _connectionState = connectionState;
+      });
+      if (_connected) {
+        final characteristic = QualifiedCharacteristic(
+            serviceId: _serviceIdRead,
+            characteristicId: _characteristicId,
+            deviceId: _id!);
+        _flutterReactiveBle
+            .subscribeToCharacteristic(characteristic)
+            .listen((values) => _updateReadCharacteristics(values));
+      }
+    });
+  }
+
+  void _updateReadCharacteristics(List<int> values) {
+    if (values[0] == 1) {
+      final speed = values[1];
+      print("speed: " + speed.toString());
+    }
+    if (values[0] == 2) {
+      final batteryLevel = values[1];
+      print("batteryLevel: " + batteryLevel.toString());
+    }
+    if (values[0] == 3) {
+      setState(() {
+        lights = values[1] == 0x52 || values[1] == 0x72;
+        locked = values[1] == 0x62 || values[1] == 0x72;
       });
     }
+    if (values[0] == 5 && values[1] == 1 && values[2] == 0x5f) {
+      final trip = values[3] + values[4] + values[5];
+      print("trip: " + trip.toString());
+    }
+  }
 
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  void _writeCharacteristic(List<int> value) {
+    if (_id != null && _connected) {
+      final characteristic = QualifiedCharacteristic(
+          serviceId: _serviceId,
+          characteristicId: _characteristicId,
+          deviceId: _id!);
+      _flutterReactiveBle.writeCharacteristicWithResponse(characteristic,
+          value: value);
+    }
+  }
+
+  void _lock() {
+    if (locked ?? false) {
+      _writeCharacteristic([0x55, 0x05, 0x05, 0x00, 0x5f]);
+    } else {
+      _writeCharacteristic([0x55, 0x05, 0x05, 0x01, 0x60]);
+    }
+  }
+
+  void _light() {
+    if (lights ?? false) {
+      _writeCharacteristic([0x55, 0x06, 0x05, 0x00, 0x60]);
+    } else {
+      _writeCharacteristic([0x55, 0x06, 0x05, 0x01, 0x61]);
+    }
   }
 
   @override
@@ -78,46 +156,32 @@ class _MyHomePageState extends State<MyHomePage> {
     // fast, so that you can just rebuild anything that needs updating rather
     // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
-          ],
+        appBar: AppBar(
+          // Here we take the value from the MyHomePage object that was created by
+          // the App.build method, and use it to set our appbar title.
+          title: Text(widget.title),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
-    );
+        body: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.lock_open),
+                  tooltip: 'Lock',
+                  onPressed: _lock,
+                  iconSize: 48,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.lightbulb),
+                  tooltip: 'Light',
+                  onPressed: _light,
+                  iconSize: 48,
+                ),
+              ],
+            ),
+            Text('Connecting to: ${_id ?? "searching"}')
+          ],
+        ));
   }
 }
