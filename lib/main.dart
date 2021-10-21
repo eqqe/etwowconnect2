@@ -109,7 +109,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     if (values[0] == 3) {
       setState(() {
-        _lights = values[1] == 0x52 || values[1] == 0x72;
+        _lights = values[1] == 0x51 || values[1] == 0x52 || values[1] == 0x72;
         _locked = values[1] == 0x62 || values[1] == 0x72;
       });
     }
