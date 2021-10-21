@@ -52,8 +52,11 @@ class _MyHomePageState extends State<MyHomePage> {
   final _serviceId = Uuid.parse("0000ffe0-0000-1000-8000-00805f9b34fb");
   final _serviceIdRead = Uuid.parse("0000ffe1-0000-1000-8000-00805f9b34fb");
   final _characteristicId = Uuid.parse("0000ffe1-0000-1000-8000-00805f9b34fb");
-  bool? locked;
-  bool? lights;
+  bool? _locked;
+  bool? _lights;
+  int? _trip;
+  int? _battery;
+  int? _speed;
   String? _id;
   ConnectionStateUpdate? _connectionState;
 
@@ -99,50 +102,68 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _updateReadCharacteristics(List<int> values) {
     if (values[0] == 1) {
-      final speed = values[1];
-      print("speed: " + speed.toString());
+      _speed = values[1];
     }
     if (values[0] == 2) {
-      final batteryLevel = values[1];
-      print("batteryLevel: " + batteryLevel.toString());
+      _battery = values[1];
     }
     if (values[0] == 3) {
       setState(() {
-        lights = values[1] == 0x52 || values[1] == 0x72;
-        locked = values[1] == 0x62 || values[1] == 0x72;
+        _lights = values[1] == 0x52 || values[1] == 0x72;
+        _locked = values[1] == 0x62 || values[1] == 0x72;
       });
     }
     if (values[0] == 5 && values[1] == 1 && values[2] == 0x5f) {
-      final trip = values[3] + values[4] + values[5];
-      print("trip: " + trip.toString());
+      _trip = values[3] + values[4] + values[5];
     }
   }
 
-  void _writeCharacteristic(List<int> value) {
+  void _writeCharacteristic(List<int> values) {
     if (_id != null && _connected) {
       final characteristic = QualifiedCharacteristic(
           serviceId: _serviceId,
           characteristicId: _characteristicId,
           deviceId: _id!);
+      values.add(values.reduce((p, c) => p + c));
       _flutterReactiveBle.writeCharacteristicWithResponse(characteristic,
-          value: value);
+          value: values);
     }
   }
 
-  void _lock() {
-    if (locked ?? false) {
-      _writeCharacteristic([0x55, 0x05, 0x05, 0x00, 0x5f]);
-    } else {
-      _writeCharacteristic([0x55, 0x05, 0x05, 0x01, 0x60]);
-    }
+  void _lockOn() {
+    _writeCharacteristic([0x55, 0x05, 0x05, 0x01]);
   }
 
-  void _light() {
-    if (lights ?? false) {
-      _writeCharacteristic([0x55, 0x06, 0x05, 0x00, 0x60]);
-    } else {
-      _writeCharacteristic([0x55, 0x06, 0x05, 0x01, 0x61]);
-    }
+  void _lockOff() {
+    _writeCharacteristic([0x55, 0x05, 0x05, 0x00]);
+  }
+
+  void _lightOn() {
+    _writeCharacteristic([0x55, 0x06, 0x05, 0x01]);
+  }
+
+  void _lightOff() {
+    _writeCharacteristic([0x55, 0x06, 0x05, 0x00]);
+  }
+
+  void _setSpeed(int mode) {
+    _writeCharacteristic([0x55, 0x02, 0x05, mode]);
+  }
+
+  void _setSpeedL0() {
+    _setSpeed(0);
+  }
+
+  void _setSpeedL1() {
+    _setSpeed(1);
+  }
+
+  void _setSpeedL2() {
+    _setSpeed(2);
+  }
+
+  void _setSpeedL3() {
+    _setSpeed(3);
   }
 
   @override
@@ -166,19 +187,75 @@ class _MyHomePageState extends State<MyHomePage> {
               children: [
                 IconButton(
                   icon: const Icon(Icons.lock_open),
+                  color: Colors.green,
                   tooltip: 'Lock',
-                  onPressed: _lock,
-                  iconSize: 48,
+                  onPressed: _locked ?? false ? _lockOff : null,
+                  iconSize: 80,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.lock),
+                  color: Colors.red,
+                  tooltip: 'Lock',
+                  onPressed: _locked ?? false ? null : _lockOn,
+                  iconSize: 80,
+                ),
+              ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.lightbulb),
+                  tooltip: 'Light',
+                  color: Colors.yellow,
+                  onPressed: _lights ?? false ? _lightOff : null,
+                  iconSize: 80,
                 ),
                 IconButton(
                   icon: const Icon(Icons.lightbulb),
                   tooltip: 'Light',
-                  onPressed: _light,
-                  iconSize: 48,
+                  onPressed: _lights ?? false ? null : _lightOn,
+                  iconSize: 80,
                 ),
               ],
             ),
-            Text('Connecting to: ${_id ?? "searching"}')
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.speed),
+                  tooltip: '6km/h',
+                  color: Colors.green,
+                  onPressed: _setSpeedL1,
+                  iconSize: 80,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.speed),
+                  tooltip: '20km/h',
+                  color: Colors.blue,
+                  onPressed: _setSpeedL2,
+                  iconSize: 80,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.speed),
+                  tooltip: '25km/h',
+                  color: Colors.yellow,
+                  onPressed: _setSpeedL3,
+                  iconSize: 80,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.speed),
+                  tooltip: '35km/h',
+                  color: Colors.red,
+                  onPressed: _setSpeedL0,
+                  iconSize: 80,
+                ),
+              ],
+            ),
+            Text('Connecting to: ${_id ?? "searching"}'),
+            Text('${_speed != null ? "Speed: ${_speed! / 10}" : ""}'),
+            Text('${_trip != null ? "Trip: $_trip" : ""}'),
+            Text('${_battery != null ? "Battery: $_battery %" : ""}')
           ],
         ));
   }
