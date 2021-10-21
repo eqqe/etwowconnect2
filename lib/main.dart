@@ -11,20 +11,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'E-Twow GT SE Unofficial App',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.yellow,
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+      home: MyHomePage(title: 'E-Twow GT SE Unofficial App'),
     );
   }
 }
@@ -190,14 +181,14 @@ class _MyHomePageState extends State<MyHomePage> {
                   color: Colors.green,
                   tooltip: 'Lock',
                   onPressed: _locked ?? false ? _lockOff : null,
-                  iconSize: 80,
+                  iconSize: 120,
                 ),
                 IconButton(
                   icon: const Icon(Icons.lock),
                   color: Colors.red,
                   tooltip: 'Lock',
                   onPressed: _locked ?? false ? null : _lockOn,
-                  iconSize: 80,
+                  iconSize: 120,
                 ),
               ],
             ),
@@ -227,35 +218,55 @@ class _MyHomePageState extends State<MyHomePage> {
                   tooltip: '6km/h',
                   color: Colors.green,
                   onPressed: _setSpeedL1,
-                  iconSize: 80,
+                  iconSize: 70,
                 ),
                 IconButton(
                   icon: const Icon(Icons.speed),
                   tooltip: '20km/h',
                   color: Colors.blue,
                   onPressed: _setSpeedL2,
-                  iconSize: 80,
+                  iconSize: 70,
                 ),
                 IconButton(
                   icon: const Icon(Icons.speed),
                   tooltip: '25km/h',
                   color: Colors.yellow,
                   onPressed: _setSpeedL3,
-                  iconSize: 80,
+                  iconSize: 70,
                 ),
                 IconButton(
                   icon: const Icon(Icons.speed),
                   tooltip: '35km/h',
                   color: Colors.red,
                   onPressed: _setSpeedL0,
-                  iconSize: 80,
+                  iconSize: 70,
                 ),
               ],
             ),
-            Text('Connecting to: ${_id ?? "searching"}'),
-            Text('${_speed != null ? "Speed: ${_speed! / 10}" : ""}'),
-            Text('${_trip != null ? "Trip: $_trip" : ""}'),
-            Text('${_battery != null ? "Battery: $_battery %" : ""}')
+            Text(
+              'MAC: ${_id ?? "searching"}',
+              style: TextStyle(
+                fontSize: 20.0, // insert your font size here
+              ),
+            ),
+            Text(
+              '${_speed != null ? "Speed: ${_speed! / 10}" : ""}',
+              style: TextStyle(
+                fontSize: 20.0, // insert your font size here
+              ),
+            ),
+            Text(
+              '${_trip != null ? "Trip: $_trip" : ""}',
+              style: TextStyle(
+                fontSize: 20.0, // insert your font size here
+              ),
+            ),
+            Text(
+              '${_battery != null ? "Battery: $_battery %" : ""}',
+              style: TextStyle(
+                fontSize: 20.0, // insert your font size here
+              ),
+            )
           ],
         ));
   }
