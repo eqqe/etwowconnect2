@@ -1,6 +1,6 @@
 # Unofficial Etwow Connect Application
 
-https://github.com/eqqe/etwowconnect2/releases/download/v0.3/app-release.apk
+https://github.com/eqqe/etwowconnect2/releases/download/latest/app-release.apk
 
 This app connects to Etwow GT SE and can set settings including unlocking full speed (use on private roads).
 
