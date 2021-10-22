@@ -115,12 +115,10 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     if (values[0] == 3) {
       setState(() {
-        final hexStr = value.toRadixString(16);
-        final first = hexStr[0];
-        final second = hexStr[1];
-        _lights = first == "5" || first == "7";
-        _locked = first == "6" || first == "7";
-        _mode = int.parse(second);
+         final first = value ~/ 0x10;
+        _lights = first == 5 || first == 7;
+        _locked = first == 6 || first == 7;
+        _mode = value % 0x10;
       });
     }
     if (values[0] == 5 && values[1] == 1 && values[2] == 0x5f) {
