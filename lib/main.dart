@@ -132,29 +132,31 @@ class _MyHomePageState extends State<MyHomePage> {
           serviceId: _serviceId,
           characteristicId: _characteristicId,
           deviceId: _id!);
-      values.add(values.reduce((p, c) => p + c));
-      _ble.writeCharacteristicWithResponse(characteristic, value: values);
+      final allValues = [0x55];
+      allValues.addAll(values);
+      allValues.add(allValues.reduce((p, c) => p + c));
+      _ble.writeCharacteristicWithResponse(characteristic, value: allValues);
     }
   }
 
   void _lockOn() {
-    _send([0x55, 0x05, 0x05, 0x01]);
+    _send([0x05, 0x05, 0x01]);
   }
 
   void _lockOff() {
-    _send([0x55, 0x05, 0x05, 0x00]);
+    _send([0x05, 0x05, 0x00]);
   }
 
   void _lightOn() {
-    _send([0x55, 0x06, 0x05, 0x01]);
+    _send([0x06, 0x05, 0x01]);
   }
 
   void _lightOff() {
-    _send([0x55, 0x06, 0x05, 0x00]);
+    _send([0x06, 0x05, 0x00]);
   }
 
   void _setSpeed(int mode) {
-    _send([0x55, 0x02, 0x05, mode]);
+    _send([0x02, 0x05, mode]);
   }
 
   @override
