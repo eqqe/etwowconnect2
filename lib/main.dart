@@ -69,7 +69,7 @@ class _MyHomePageState extends State<MyHomePage> {
         await _ble.requestConnectionPriority(
             deviceId: device.id, priority: ConnectionPriority.highPerformance);
         listenToDevice(device.id);
-        //listener.cancel();
+        listener.cancel();
       }
     });
   }
@@ -110,24 +110,32 @@ class _MyHomePageState extends State<MyHomePage> {
 
     switch (values[0]) {
       case 1:
-        _speed = value + (values[2] == 1 ? 0xff : 0);
-          break;
+        setState(() {
+          _speed = value + (values[2] == 1 ? 0xff : 0);
+        });
+        break;
       case 2:
-        _battery = value;
+        setState(() {
+          _battery = value;
+        });
         break;
       case 3:
+        final first = value ~/ 0x10;
         setState(() {
-          final first = value ~/ 0x10;
           _lights = first == 5 || first == 7;
           _locked = first == 6 || first == 7;
           _mode = value % 0x10;
         });
         break;
       case 4:
-        _temperature = values[1] + values[2];
+        setState(() {
+          _temperature = values[1] + values[2];
+        });
         break;
       case 5:
+        setState(() {
           _odo = values[3] + values[4] + values[5];
+        });
         break;
       default:
         break;
