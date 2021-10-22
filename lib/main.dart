@@ -39,6 +39,7 @@ class _MyHomePageState extends State<MyHomePage> {
   late StreamSubscription<DiscoveredDevice> listener;
   bool? _locked;
   bool? _lights;
+  int? _mode;
   int? _odo;
   int? _battery;
   int? _speed;
@@ -95,6 +96,7 @@ class _MyHomePageState extends State<MyHomePage> {
         setState(() {
           _locked = null;
           _lights = null;
+          _mode = null;
           _odo = null;
           _battery = null;
           _speed = null;
@@ -113,11 +115,12 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     if (values[0] == 3) {
       setState(() {
-        print(value.toRadixString(16));
-        _lights =
-            value == 0x51 || value == 0x52 || value == 0x71 || value == 0x72;
-        _locked =
-            value == 0x61 || value == 0x62 || value == 0x71 || value == 0x72;
+        final hexStr = value.toRadixString(16);
+        final first = hexStr[0];
+        final second = hexStr[1];
+        _lights = first == "5" || first == "7";
+        _locked = first == "6" || first == "7";
+        _mode = int.parse(second);
       });
     }
     if (values[0] == 5 && values[1] == 1 && values[2] == 0x5f) {
@@ -208,28 +211,28 @@ class _MyHomePageState extends State<MyHomePage> {
                 icon: const Icon(Icons.speed),
                 tooltip: '6km/h',
                 color: Colors.green,
-                onPressed: _connected ? () => _setSpeed(1) : null,
+                onPressed: _connected && _mode != 1 ? () => _setSpeed(1) : null,
                 iconSize: 70,
               ),
               IconButton(
                 icon: const Icon(Icons.speed),
                 tooltip: '20km/h',
                 color: Colors.blue,
-                onPressed: _connected ? () => _setSpeed(2) : null,
+                onPressed: _connected && _mode != 2 ? () => _setSpeed(2) : null,
                 iconSize: 70,
               ),
               IconButton(
                 icon: const Icon(Icons.speed),
                 tooltip: '25km/h',
                 color: Colors.yellow,
-                onPressed: _connected ? () => _setSpeed(3) : null,
+                onPressed: _connected && _mode != 3 ? () => _setSpeed(3) : null,
                 iconSize: 70,
               ),
               IconButton(
                 icon: const Icon(Icons.speed),
                 tooltip: '35km/h',
                 color: Colors.red,
-                onPressed: _connected ? () => _setSpeed(0) : null,
+                onPressed: _connected && _mode != 0 ? () => _setSpeed(0) : null,
                 iconSize: 70,
               ),
             ],
