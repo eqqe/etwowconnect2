@@ -37,10 +37,11 @@ class _MyHomePageState extends State<MyHomePage> {
   final _characteristicId = Uuid.parse("0000ffe1-0000-1000-8000-00805f9b34fb");
   late StreamSubscription<DiscoveredDevice> listener;
   bool? _locked;
+  bool? _zeroStart;
   bool? _lights;
   int? _mode;
   int? _odo;
-  int? _temperature;
+  int? _trip;
   int? _battery;
   int? _speed;
   String? _id;
@@ -100,6 +101,8 @@ class _MyHomePageState extends State<MyHomePage> {
           _odo = null;
           _battery = null;
           _speed = null;
+          _trip = null;
+          _zeroStart = null;
         });
       }
     });
@@ -122,14 +125,15 @@ class _MyHomePageState extends State<MyHomePage> {
       case 3:
         final first = value ~/ 0x10;
         setState(() {
-          _lights = first == 5 || first == 7;
-          _locked = first == 6 || first == 7;
+          _lights = [5, 7, 0xd, 0xf].contains(first);
+          _locked = [6, 7, 0xe, 0xf].contains(first);
+          _zeroStart = [0xc, 0xd, 0xe, 0xf].contains(first);
           _mode = value % 0x10;
         });
         break;
       case 4:
         setState(() {
-          _temperature = values[1] + values[2];
+          _trip = values[1] + values[2];
         });
         break;
       case 5:
@@ -266,11 +270,15 @@ class _MyHomePageState extends State<MyHomePage> {
             style: TextStyle(fontSize: 20.0),
           ),
           Text(
-            '${_temperature != null ? "Temperature: $_temperature°C" : ""}',
+            '${_trip != null ? "Trip: ${_trip! / 10}" : ""}',
             style: TextStyle(fontSize: 20.0),
           ),
           Text(
             '${_odo != null ? "Odometer: $_odo" : ""}',
+            style: TextStyle(fontSize: 20.0),
+          ),
+          Text(
+            '${_zeroStart != null ? "Zero Start: $_zeroStart" : ""}',
             style: TextStyle(fontSize: 20.0),
           ),
           Text(
