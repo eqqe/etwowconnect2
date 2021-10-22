@@ -9,7 +9,6 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -41,6 +40,7 @@ class _MyHomePageState extends State<MyHomePage> {
   bool? _lights;
   int? _mode;
   int? _odo;
+  int? _temperature;
   int? _battery;
   int? _speed;
   String? _id;
@@ -69,7 +69,7 @@ class _MyHomePageState extends State<MyHomePage> {
         await _ble.requestConnectionPriority(
             deviceId: device.id, priority: ConnectionPriority.highPerformance);
         listenToDevice(device.id);
-        listener.cancel();
+        //listener.cancel();
       }
     });
   }
@@ -107,22 +107,30 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _updateReadCharacteristics(List<int> values) {
     final value = values[1];
-    if (values[0] == 1) {
-      _speed = value;
-    }
-    if (values[0] == 2) {
-      _battery = value;
-    }
-    if (values[0] == 3) {
-      setState(() {
-        final first = value ~/ 0x10;
-        _lights = first == 5 || first == 7;
-        _locked = first == 6 || first == 7;
-        _mode = value % 0x10;
-      });
-    }
-    if (values[0] == 5 && values[1] == 1 && values[2] == 0x5f) {
-      _odo = values[3] + values[4] + values[5];
+
+    switch (values[0]) {
+      case 1:
+        _speed = value + (values[2] == 1 ? 0xff : 0);
+          break;
+      case 2:
+        _battery = value;
+        break;
+      case 3:
+        setState(() {
+          final first = value ~/ 0x10;
+          _lights = first == 5 || first == 7;
+          _locked = first == 6 || first == 7;
+          _mode = value % 0x10;
+        });
+        break;
+      case 4:
+        _temperature = values[1] + values[2];
+        break;
+      case 5:
+          _odo = values[3] + values[4] + values[5];
+        break;
+      default:
+        break;
     }
   }
 
@@ -247,6 +255,10 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
           Text(
             '${_speed != null ? "Speed: ${_speed! / 10}" : ""}',
+            style: TextStyle(fontSize: 20.0),
+          ),
+          Text(
+            '${_temperature != null ? "Temperature: $_temperature°C" : ""}',
             style: TextStyle(fontSize: 20.0),
           ),
           Text(
