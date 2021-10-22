@@ -115,7 +115,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     if (values[0] == 3) {
       setState(() {
-         final first = value ~/ 0x10;
+        final first = value ~/ 0x10;
         _lights = first == 5 || first == 7;
         _locked = first == 6 || first == 7;
         _mode = value % 0x10;
@@ -209,28 +209,32 @@ class _MyHomePageState extends State<MyHomePage> {
                 icon: const Icon(Icons.speed),
                 tooltip: '6km/h',
                 color: Colors.green,
-                onPressed: _mode !=  null && _mode != 1 ? () => _setSpeed(1) : null,
+                onPressed:
+                    _mode != null && _mode != 1 ? () => _setSpeed(1) : null,
                 iconSize: 70,
               ),
               IconButton(
                 icon: const Icon(Icons.speed),
                 tooltip: '20km/h',
                 color: Colors.blue,
-                onPressed: _mode !=  null && _mode != 2 ? () => _setSpeed(2) : null,
+                onPressed:
+                    _mode != null && _mode != 2 ? () => _setSpeed(2) : null,
                 iconSize: 70,
               ),
               IconButton(
                 icon: const Icon(Icons.speed),
                 tooltip: '25km/h',
                 color: Colors.yellow,
-                onPressed: _mode !=  null && _mode != 3 ? () => _setSpeed(3) : null,
+                onPressed:
+                    _mode != null && _mode != 3 ? () => _setSpeed(3) : null,
                 iconSize: 70,
               ),
               IconButton(
                 icon: const Icon(Icons.speed),
                 tooltip: '35km/h',
                 color: Colors.red,
-                onPressed: _mode != null && _mode != 0 ? () => _setSpeed(0) : null,
+                onPressed:
+                    _mode != null && _mode != 0 ? () => _setSpeed(0) : null,
                 iconSize: 70,
               ),
             ],
