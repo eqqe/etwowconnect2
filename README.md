@@ -12,9 +12,7 @@ Be careful because this app can lock and stop suddenly your scooter while riddin
 
 ## iOS iPhone unlock full speed mode
 Don't have an Android phone?
-You can send custom Bluetooth instructions to unlock full speed using an iPhone
-
-
+You can send custom Bluetooth instructions to configure your E-Twow GT Bluetooth (SE / SL / GTS) scooter
 
 ### Lock
 55 05 05 01 60
