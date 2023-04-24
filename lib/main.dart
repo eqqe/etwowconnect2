@@ -63,7 +63,7 @@ class _MyHomePageState extends State<MyHomePage> {
       return listenToDevice(_id!);
     }
     listener = _ble.scanForDevices(withServices: []).listen((device) async {
-      if (device.name.contains("E-TWOW")) {
+      if (device.name.contains("E-TWOW") || device.name.contains("GTSport")) {
         setState(() {
           _id = device.id;
         });
