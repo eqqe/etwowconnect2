@@ -263,36 +263,36 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
           Text(
             'MAC: ${_disconnected ? "lost connection" : (_id ?? "searching")}',
-            style: TextStyle(fontSize: 20.0),
+            style: const TextStyle(fontSize: 20.0),
           ),
           Text(
-            '${_speed != null ? "Speed: ${_speed! / 10}" : ""}',
-            style: TextStyle(fontSize: 20.0),
+            _speed != null ? "Speed: ${_speed! / 10}" : "",
+            style: const TextStyle(fontSize: 20.0),
           ),
           Text(
-            '${_trip != null ? "Trip: ${_trip! / 10}" : ""}',
-            style: TextStyle(fontSize: 20.0),
+            _trip != null ? "Trip: ${_trip! / 10}" : "",
+            style: const TextStyle(fontSize: 20.0),
           ),
           Text(
-            '${_odo != null ? "Odometer: $_odo" : ""}',
-            style: TextStyle(fontSize: 20.0),
+            _odo != null ? "Odometer: $_odo" : "",
+            style: const TextStyle(fontSize: 20.0),
           ),
           Text(
-            '${_zeroStart != null ? "Zero Start: $_zeroStart" : ""}',
-            style: TextStyle(fontSize: 20.0),
+            _zeroStart != null ? "Zero Start: $_zeroStart" : "",
+            style: const TextStyle(fontSize: 20.0),
           ),
           Text(
-            '${_battery != null ? "Battery: $_battery %" : ""}',
-            style: TextStyle(fontSize: 20.0),
+            _battery != null ? "Battery: $_battery %" : "",
+            style: const TextStyle(fontSize: 20.0),
           )
         ],
       ),
       floatingActionButton: _disconnected
           ? FloatingActionButton.extended(
               onPressed: _connect,
-              icon: Icon(Icons.bluetooth),
+              icon: const Icon(Icons.bluetooth),
               backgroundColor: Colors.blue,
-              label: Text("Reconnect"))
+              label: const Text("Reconnect"))
           : null,
     );
   }
