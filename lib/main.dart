@@ -5,10 +5,12 @@ import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -16,7 +18,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.yellow,
       ),
-      home: MyHomePage(title: 'E-Twow GT SE Unofficial App'),
+      home: const MyHomePage(title: 'E-Twow GT SE Unofficial App'),
     );
   }
 }
@@ -30,11 +32,30 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
+String gTName = "E-TWOW";
+String gTSportName = "GTSport";
+
+enum ModelScooter { gTName, gTSportName }
+
+
 class _MyHomePageState extends State<MyHomePage> {
   final _ble = FlutterReactiveBle();
-  final _serviceId = Uuid.parse("0000ffe0-0000-1000-8000-00805f9b34fb");
-  final _serviceIdRead = Uuid.parse("0000ffe1-0000-1000-8000-00805f9b34fb");
-  final _characteristicId = Uuid.parse("0000ffe1-0000-1000-8000-00805f9b34fb");
+
+  final _serviceId = {
+    ModelScooter.gTName: Uuid.parse("0000ffe0-0000-1000-8000-00805f9b34fb"),
+    ModelScooter.gTSportName:
+        Uuid.parse("0000ff00-0000-1000-8000-00805f9b34fb"),
+  };
+  final _serviceIdRead = {
+    ModelScooter.gTName: Uuid.parse("0000ffe1-0000-1000-8000-00805f9b34fb"),
+    ModelScooter.gTSportName:
+        Uuid.parse("0000ff03-0000-1000-8000-00805f9b34fb"),
+  };
+  final _characteristicId = {
+    ModelScooter.gTName: Uuid.parse("0000ffe1-0000-1000-8000-00805f9b34fb"),
+    ModelScooter.gTSportName:
+        Uuid.parse("0000ff02-0000-1000-8000-00805f9b34fb"),
+  };
   late StreamSubscription<DiscoveredDevice> listener;
   bool? _locked;
   bool? _zeroStart;
@@ -45,6 +66,7 @@ class _MyHomePageState extends State<MyHomePage> {
   int? _battery;
   int? _speed;
   String? _id;
+  ModelScooter _modelScooter = ModelScooter.gTName;
   ConnectionStateUpdate? _connectionState;
 
   bool get _connected =>
@@ -63,9 +85,10 @@ class _MyHomePageState extends State<MyHomePage> {
       return listenToDevice(_id!);
     }
     listener = _ble.scanForDevices(withServices: []).listen((device) async {
-      if (device.name.contains("E-TWOW") || device.name.contains("GTSport")) {
+      if (device.name.contains(gTName) || device.name.contains(gTSportName)) {
         setState(() {
           _id = device.id;
+          _modelScooter = device.name.contains(gTName) ? ModelScooter.gTName : ModelScooter.gTSportName;
         });
         await _ble.requestConnectionPriority(
             deviceId: device.id, priority: ConnectionPriority.highPerformance);
@@ -75,6 +98,7 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  @override
   void initState() {
     super.initState();
     _connect();
@@ -87,8 +111,8 @@ class _MyHomePageState extends State<MyHomePage> {
       });
       if (_connected) {
         final characteristic = QualifiedCharacteristic(
-            serviceId: _serviceIdRead,
-            characteristicId: _characteristicId,
+            serviceId: _serviceIdRead[_modelScooter]!,
+            characteristicId: _characteristicId[_modelScooter]!,
             deviceId: _id!);
         _ble
             .subscribeToCharacteristic(characteristic)
@@ -149,8 +173,8 @@ class _MyHomePageState extends State<MyHomePage> {
   void _send(List<int> values) {
     if (_id != null && _connected) {
       final characteristic = QualifiedCharacteristic(
-          serviceId: _serviceId,
-          characteristicId: _characteristicId,
+          serviceId: _serviceId[_modelScooter]!,
+          characteristicId: _characteristicId[_modelScooter]!,
           deviceId: _id!);
       final allValues = [0x55];
       allValues.addAll(values);
@@ -232,7 +256,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 tooltip: '6km/h',
                 color: Colors.green,
                 onPressed:
-                _mode != null && _mode != 1 ? () => _setSpeed(1) : null,
+                    _mode != null && _mode != 1 ? () => _setSpeed(1) : null,
                 iconSize: 70,
               ),
               IconButton(
@@ -240,7 +264,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 tooltip: '20km/h',
                 color: Colors.blue,
                 onPressed:
-                _mode != null && _mode != 2 ? () => _setSpeed(2) : null,
+                    _mode != null && _mode != 2 ? () => _setSpeed(2) : null,
                 iconSize: 70,
               ),
               IconButton(
@@ -248,7 +272,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 tooltip: '25km/h',
                 color: Colors.yellow,
                 onPressed:
-                _mode != null && _mode != 3 ? () => _setSpeed(3) : null,
+                    _mode != null && _mode != 3 ? () => _setSpeed(3) : null,
                 iconSize: 70,
               ),
               IconButton(
@@ -256,7 +280,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 tooltip: '35km/h',
                 color: Colors.red,
                 onPressed:
-                _mode != null && _mode != 0 ? () => _setSpeed(0) : null,
+                    _mode != null && _mode != 0 ? () => _setSpeed(0) : null,
                 iconSize: 70,
               ),
             ],
@@ -289,10 +313,10 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       floatingActionButton: _disconnected
           ? FloatingActionButton.extended(
-          onPressed: _connect,
-          icon: const Icon(Icons.bluetooth),
-          backgroundColor: Colors.blue,
-          label: const Text("Reconnect"))
+              onPressed: _connect,
+              icon: const Icon(Icons.bluetooth),
+              backgroundColor: Colors.blue,
+              label: const Text("Reconnect"))
           : null,
     );
   }
