@@ -39,23 +39,23 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _startScan() async {
-    await Permission.location.request().isGranted &&
-        await Permission.bluetooth.request().isGranted;
-    _scanSubscription = flutterReactiveBle
-        .scanForDevices(withServices: []).listen((device) async {
-      var eTwowDeviceName = getEtwowDeviceName(device);
-      setState(() {
-        _checkingDevicesName = true;
-        _checkingDevicesNameString = device.name;
-      });
-      if (eTwowDeviceName != null) {
+    if (await Permission.bluetoothScan.request().isGranted && await Permission.bluetoothConnect.request().isGranted) {
+      _scanSubscription = flutterReactiveBle
+          .scanForDevices(withServices: []).listen((device) async {
+        var eTwowDeviceName = getEtwowDeviceName(device);
         setState(() {
-          _device = device;
+          _checkingDevicesName = true;
+          _checkingDevicesNameString = device.name;
         });
-        await _scanSubscription.cancel();
-        _connectToDevice();
-      }
-    });
+        if (eTwowDeviceName != null) {
+          setState(() {
+            _device = device;
+          });
+          await _scanSubscription.cancel();
+          _connectToDevice();
+        }
+      });
+    }
   }
 
   void _connectToDevice() {
@@ -272,7 +272,7 @@ class _MyHomePageState extends State<MyHomePage> {
             Text(
               _checkingDevicesName
                   ? "Checking ble device ${_checkingDevicesNameString!.isEmpty ? "<no name>" : _checkingDevicesNameString} to contain $gTName or $gTSportName"
-                  : "Not ble device found yet",
+                  : "No ble device found yet",
               style: const TextStyle(fontSize: 20.0),
             ),
           ],
