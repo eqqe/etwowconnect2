@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -44,44 +45,39 @@ class _MyHomePageState extends State<MyHomePage> {
   int? _trip;
   int? _battery;
   int? _speed;
-  String? _id;
   ConnectionStateUpdate? _connectionState;
 
   bool get _connected =>
       _connectionState?.connectionState == DeviceConnectionState.connected;
 
   bool get _disconnected =>
-      _connectionState?.connectionState == DeviceConnectionState.disconnected;
+      _connectionState == null ||
+          _connectionState?.connectionState ==
+              DeviceConnectionState.disconnected;
 
   void _connect() async {
-    final granted = await Permission.location.request().isGranted &&
-        await Permission.bluetooth.request().isGranted;
+    final granted = await Permission.location
+        .request()
+        .isGranted &&
+        await Permission.bluetooth
+            .request()
+            .isGranted;
     if (!granted) {
       return;
     }
-    if (_id != null) {
-      return listenToDevice(_id!);
-    }
-    listener = _ble.scanForDevices(withServices: []).listen((device) async {
+    listener = _ble.scanForDevices(withServices: [_serviceId]).listen((device) async {
       if (device.name.contains("E-TWOW") || device.name.contains("GTSport")) {
-        setState(() {
-          _id = device.id;
-        });
-        await _ble.requestConnectionPriority(
-            deviceId: device.id, priority: ConnectionPriority.highPerformance);
         listenToDevice(device.id);
         listener.cancel();
       }
     });
   }
 
-  void initState() {
-    super.initState();
-    _connect();
-  }
-
   void listenToDevice(String id) {
-    _ble.connectToDevice(id: id).listen((connectionState) {
+    _ble.connectToDevice(
+      id: id,
+      connectionTimeout: const Duration(seconds: 10)
+    ).listen((connectionState) {
       setState(() {
         _connectionState = connectionState;
       });
@@ -89,7 +85,7 @@ class _MyHomePageState extends State<MyHomePage> {
         final characteristic = QualifiedCharacteristic(
             serviceId: _serviceIdRead,
             characteristicId: _characteristicId,
-            deviceId: _id!);
+            deviceId: _connectionState!.deviceId);
         _ble
             .subscribeToCharacteristic(characteristic)
             .listen((values) => _updateReadCharacteristics(values));
@@ -104,6 +100,10 @@ class _MyHomePageState extends State<MyHomePage> {
           _trip = null;
           _zeroStart = null;
         });
+      }
+    }).onError((err) {
+      if (kDebugMode) {
+        print(err);
       }
     });
   }
@@ -147,11 +147,11 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _send(List<int> values) {
-    if (_id != null && _connected) {
+    if (_connected) {
       final characteristic = QualifiedCharacteristic(
           serviceId: _serviceId,
           characteristicId: _characteristicId,
-          deviceId: _id!);
+          deviceId: _connectionState!.deviceId);
       final allValues = [0x55];
       allValues.addAll(values);
       allValues.add(allValues.reduce((p, c) => p + c));
@@ -262,7 +262,11 @@ class _MyHomePageState extends State<MyHomePage> {
             ],
           ),
           Text(
-            'MAC: ${_disconnected ? "lost connection" : (_id ?? "searching")}',
+            'MAC: ${_disconnected ? "lost connection" : (_connectionState!.deviceId ?? "searching")}',
+            style: const TextStyle(fontSize: 20.0),
+          ),
+          Text(
+            'Connected: ${_connectionState?.connectionState}',
             style: const TextStyle(fontSize: 20.0),
           ),
           Text(
@@ -287,13 +291,12 @@ class _MyHomePageState extends State<MyHomePage> {
           )
         ],
       ),
-      floatingActionButton: _disconnected
-          ? FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton.extended(
           onPressed: _connect,
           icon: const Icon(Icons.bluetooth),
           backgroundColor: Colors.blue,
           label: const Text("Reconnect"))
-          : null,
+      ,
     );
   }
 }
