@@ -79,9 +79,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void listenToDevice(String id) {
-    _scooterConnection?.cancel();
     _scooterConnection = _ble
-        .connectToDevice(id: id, connectionTimeout: const Duration(seconds: 10))
+        .connectToDevice(id: id, connectionTimeout: const Duration(seconds: 15))
         .listen((connectionState) {
       setState(() {
         _connectionState = connectionState;
