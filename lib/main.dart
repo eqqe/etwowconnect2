@@ -78,9 +78,9 @@ class _MyHomePageState extends State<MyHomePage> {
         await Permission.bluetooth.request().isGranted;
     _scooterConnection?.cancel();
     setState(() {
-      _listener = _ble.scanForDevices(
-          withServices: [_serviceId[gTName]!],
-          scanMode: ScanMode.lowLatency).listen((device) async {
+      _listener = _ble.scanForDevices(withServices: [
+        _serviceId[gTName]!
+      ]).listen((device) async {
         listenToDevice(device);
         _listener?.cancel();
       });
@@ -89,8 +89,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void initState() {
-    super.initState();
     _connect();
+    super.initState();
   }
 
   void listenToDevice(DiscoveredDevice device) {
@@ -111,7 +111,6 @@ class _MyHomePageState extends State<MyHomePage> {
             .subscribeToCharacteristic(characteristic)
             .listen((values) => _updateReadCharacteristics(values));
       } else if (_disconnected) {
-        _scooterConnection?.cancel();
         setState(() {
           _listener = null;
           _locked = null;
