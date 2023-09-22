@@ -35,24 +35,19 @@ class MyHomePage extends StatefulWidget {
 String gTName = "E-TWOW";
 String gTSportName = "GTSport";
 
-enum ModelScooter { gTName, gTSportName }
-
 class _MyHomePageState extends State<MyHomePage> {
   final _ble = FlutterReactiveBle();
   final _serviceId = {
-    ModelScooter.gTName: Uuid.parse("0000ffe0-0000-1000-8000-00805f9b34fb"),
-    ModelScooter.gTSportName:
-    Uuid.parse("0000ff00-0000-1000-8000-00805f9b34fb"),
+    gTName: Uuid.parse("0000ffe0-0000-1000-8000-00805f9b34fb"),
+    gTSportName: Uuid.parse("0000ff00-0000-1000-8000-00805f9b34fb"),
   };
   final _serviceIdRead = {
-    ModelScooter.gTName: Uuid.parse("0000ffe1-0000-1000-8000-00805f9b34fb"),
-    ModelScooter.gTSportName:
-    Uuid.parse("0000ff03-0000-1000-8000-00805f9b34fb"),
+    gTName: Uuid.parse("0000ffe1-0000-1000-8000-00805f9b34fb"),
+    gTSportName: Uuid.parse("0000ff03-0000-1000-8000-00805f9b34fb"),
   };
   final _characteristicId = {
-    ModelScooter.gTName: Uuid.parse("0000ffe1-0000-1000-8000-00805f9b34fb"),
-    ModelScooter.gTSportName:
-    Uuid.parse("0000ff02-0000-1000-8000-00805f9b34fb"),
+    gTName: Uuid.parse("0000ffe1-0000-1000-8000-00805f9b34fb"),
+    gTSportName: Uuid.parse("0000ff02-0000-1000-8000-00805f9b34fb"),
   };
   late StreamSubscription<DiscoveredDevice> listener;
   bool? _locked;
@@ -63,6 +58,7 @@ class _MyHomePageState extends State<MyHomePage> {
   int? _trip;
   int? _battery;
   int? _speed;
+  String? _model;
   ConnectionStateUpdate? _connectionState;
   StreamSubscription<DiscoveredDevice>? _listener;
   StreamSubscription<ConnectionStateUpdate>? _scooterConnection;
@@ -82,11 +78,12 @@ class _MyHomePageState extends State<MyHomePage> {
         await Permission.bluetooth.request().isGranted;
     _scooterConnection?.cancel();
     setState(() {
-      _listener =
-          _ble.scanForDevices(withServices: [_serviceId[ModelScooter.gTName]!], scanMode: ScanMode.lowLatency).listen((device) async {
-            listenToDevice(device.id);
-            _listener?.cancel();
-          });
+      _listener = _ble.scanForDevices(
+          withServices: [_serviceId[gTName]!],
+          scanMode: ScanMode.lowLatency).listen((device) async {
+        listenToDevice(device);
+        _listener?.cancel();
+      });
     });
   }
 
@@ -96,17 +93,19 @@ class _MyHomePageState extends State<MyHomePage> {
     _connect();
   }
 
-  void listenToDevice(String id) {
+  void listenToDevice(DiscoveredDevice device) {
     _scooterConnection = _ble
-        .connectToDevice(id: id, connectionTimeout: const Duration(seconds: 15))
+        .connectToDevice(
+            id: device.id, connectionTimeout: const Duration(seconds: 15))
         .listen((connectionState) {
       setState(() {
+        _model = device.name.contains(gTSportName) ? gTSportName : gTName;
         _connectionState = connectionState;
       });
       if (_connected) {
         final characteristic = QualifiedCharacteristic(
-            serviceId: _serviceIdRead[ModelScooter.gTName]!,
-            characteristicId: _characteristicId[ModelScooter.gTName]!,
+            serviceId: _serviceIdRead[_model]!,
+            characteristicId: _characteristicId[_model]!,
             deviceId: _connectionState!.deviceId);
         _ble
             .subscribeToCharacteristic(characteristic)
@@ -169,8 +168,8 @@ class _MyHomePageState extends State<MyHomePage> {
   void _send(List<int> values) {
     if (_connected) {
       final characteristic = QualifiedCharacteristic(
-          serviceId: _serviceId[ModelScooter.gTName]!,
-          characteristicId: _characteristicId[ModelScooter.gTName]!,
+          serviceId: _serviceId[_model]!,
+          characteristicId: _characteristicId[_model]!,
           deviceId: _connectionState!.deviceId);
       final allValues = [0x55];
       allValues.addAll(values);
@@ -302,7 +301,11 @@ class _MyHomePageState extends State<MyHomePage> {
             style: const TextStyle(fontSize: 20.0),
           ),
           Text(
-              _connected ? "Connected" : _connecting ? "Connecting" : "Disconnected",
+            _connected
+                ? "Connected"
+                : _connecting
+                    ? "Connecting"
+                    : "Disconnected",
             style: const TextStyle(fontSize: 20.0),
           ),
           Text(
