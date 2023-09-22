@@ -4,6 +4,9 @@ import 'package:etwowconnect2/types.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:quick_actions/quick_actions.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 final flutterReactiveBle = FlutterReactiveBle();
 
@@ -27,6 +30,39 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void initState() {
+    const QuickActions quickActions = QuickActions();
+    quickActions.initialize((shortcutType) async {
+      switch (shortcutType) {
+        case 'action_lock':
+          await _lockOn();
+          break;
+        case 'action_unlock':
+          await _lockOff();
+          break;
+        case 'action_set_speed_0':
+          await _setSpeed(0);
+          break;
+        case 'action_set_speed_2':
+          await _setSpeed(2);
+          break;
+      }
+    });
+    quickActions.setShortcutItems(<ShortcutItem>[
+      const ShortcutItem(
+          type: 'action_lock', localizedTitle: 'lock 🔒', icon: "ic_launcher"),
+      const ShortcutItem(
+          type: 'action_unlock',
+          localizedTitle: 'unlock 🔓',
+          icon: "ic_launcher"),
+      const ShortcutItem(
+          type: 'action_set_speed_2',
+          localizedTitle: '20 km/h ⚡️',
+          icon: "ic_launcher"),
+      const ShortcutItem(
+          type: 'action_set_speed_0',
+          localizedTitle: '⚡️⚡️⚡️',
+          icon: "ic_launcher"),
+    ]);
     _startScan();
     super.initState();
   }
@@ -53,6 +89,9 @@ class _MyHomePageState extends State<MyHomePage> {
           setState(() {
             _device = device;
           });
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('eTwowDeviceName', eTwowDeviceName);
+          await prefs.setString('deviceId', device.id);
           await _scanSubscription.cancel();
           _connectToDevice();
         }
@@ -99,36 +138,70 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  void _send(List<int> values) {
+  _send(List<int> values) async {
+    final String? eTwowDeviceName;
+    final String? deviceId;
+    if (_device == null) {
+      final prefs = await SharedPreferences.getInstance();
+
+      eTwowDeviceName = prefs.getString('eTwowDeviceName');
+      deviceId = prefs.getString('deviceId');
+    } else {
+      eTwowDeviceName = getEtwowDeviceName(_device!);
+      deviceId = _device?.id;
+    }
+    if (eTwowDeviceName == null || deviceId == null) {
+      return _startScan();
+    }
     final characteristic = QualifiedCharacteristic(
-        serviceId: serviceId[getEtwowDeviceName(_device!)]!,
-        characteristicId: characteristicId[getEtwowDeviceName(_device!)]!,
-        deviceId: _device!.id);
+        serviceId: serviceId[eTwowDeviceName]!,
+        characteristicId: characteristicId[eTwowDeviceName]!,
+        deviceId: deviceId);
     final allValues = [0x55];
     allValues.addAll(values);
     allValues.add(allValues.reduce((p, c) => p + c));
-    flutterReactiveBle.writeCharacteristicWithResponse(characteristic,
+    await flutterReactiveBle.writeCharacteristicWithResponse(characteristic,
         value: allValues);
   }
 
-  void _lockOn() {
-    _send([0x05, 0x05, 0x01]);
+  _lockOn() async {
+    if (_scooter?.speed == 0) {
+      await _send([0x05, 0x05, 0x01]);
+      toast("Locked");
+    } else {
+      toast("Cannot lock as speed is not 0");
+    }
   }
 
-  void _lockOff() {
-    _send([0x05, 0x05, 0x00]);
+  _lockOff() async {
+    await _send([0x05, 0x05, 0x00]);
+    toast("Lock removed");
   }
 
-  void _lightOn() {
-    _send([0x06, 0x05, 0x01]);
+  _lightOn() async {
+    await _send([0x06, 0x05, 0x01]);
+    toast("Lights on");
   }
 
-  void _lightOff() {
-    _send([0x06, 0x05, 0x00]);
+  _lightOff() async {
+    await _send([0x06, 0x05, 0x00]);
+    toast("Lights off");
   }
 
-  void _setSpeed(int mode) {
-    _send([0x02, 0x05, mode]);
+  _setSpeed(int mode) async {
+    await _send([0x02, 0x05, mode]);
+    toast("Speed set to L$mode mode");
+  }
+
+  void toast(String message) {
+    Fluttertoast.showToast(
+        msg: message,
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        timeInSecForIosWeb: 1,
+        backgroundColor: Colors.green,
+        textColor: Colors.white,
+        fontSize: 16.0);
   }
 
   String get message {
