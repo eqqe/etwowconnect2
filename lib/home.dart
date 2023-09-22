@@ -117,46 +117,41 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Future _listenConnectToDevice() async {
-    Completer completer = Completer();
-
-    _connectionSubscription?.cancel();
-    _connectionSubscription = flutterReactiveBle
-        .connectToDevice(
-            id: _deviceId!, connectionTimeout: const Duration(seconds: 5))
-        .listen((connectionState) {
-      setState(() {
-        _connectionState = connectionState;
-      });
-      if (connectionState.connectionState ==
-          DeviceConnectionState.disconnected) {
-        setState(() {
-          _scooter = null;
-        });
-        completer = Completer();
-        _connectToDevice();
-      } else if (connectionState.connectionState ==
-          DeviceConnectionState.connected) {
-        if (!completer.isCompleted) {
-          return completer.complete();
-        }
-      }
-    });
-
-    return completer.future;
-  }
-
   _connectToDevice() async {
-    if (_deviceId != null && _eTwowDeviceName != null) {
-      await _listenConnectToDevice();
-      final characteristic = QualifiedCharacteristic(
-          serviceId: serviceId[_eTwowDeviceName]!,
-          characteristicId: characteristicId[_eTwowDeviceName]!,
-          deviceId: _deviceId!);
-      flutterReactiveBle
-          .subscribeToCharacteristic(characteristic)
-          .listen((values) => _updateReadCharacteristics(values));
+    Completer firstConnectionOk = Completer();
+
+    void connect() {
+      _connectionSubscription?.cancel();
+      _connectionSubscription = flutterReactiveBle
+          .connectToDevice(
+          id: _deviceId!, connectionTimeout: const Duration(seconds: 5))
+          .listen((connectionState) {
+        setState(() {
+          _connectionState = connectionState;
+        });
+        if (connectionState.connectionState ==
+            DeviceConnectionState.disconnected) {
+          setState(() {
+            _scooter = null;
+          });
+          connect();
+        } else if (connectionState.connectionState ==
+            DeviceConnectionState.connected) {
+          final characteristic = QualifiedCharacteristic(
+              serviceId: serviceId[_eTwowDeviceName]!,
+              characteristicId: characteristicId[_eTwowDeviceName]!,
+              deviceId: _deviceId!);
+          flutterReactiveBle
+              .subscribeToCharacteristic(characteristic)
+              .listen((values) => _updateReadCharacteristics(values));
+          if (!firstConnectionOk.isCompleted) {
+            return firstConnectionOk.complete();
+          }
+        }
+      });
     }
+    connect();
+    return firstConnectionOk.future;
   }
 
   void _updateReadCharacteristics(List<int> values) {
