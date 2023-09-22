@@ -46,38 +46,43 @@ class _MyHomePageState extends State<MyHomePage> {
   int? _battery;
   int? _speed;
   ConnectionStateUpdate? _connectionState;
+  StreamSubscription<DiscoveredDevice>? _listener;
+  StreamSubscription<ConnectionStateUpdate>? _scooterConnection;
 
   bool get _connected =>
       _connectionState?.connectionState == DeviceConnectionState.connected;
 
+  bool get _connecting =>
+      _connectionState?.connectionState == DeviceConnectionState.connecting;
+
   bool get _disconnected =>
       _connectionState == null ||
-          _connectionState?.connectionState ==
-              DeviceConnectionState.disconnected;
+      _connectionState?.connectionState == DeviceConnectionState.disconnected;
 
   void _connect() async {
-    final granted = await Permission.location
-        .request()
-        .isGranted &&
-        await Permission.bluetooth
-            .request()
-            .isGranted;
-    if (!granted) {
-      return;
-    }
-    listener = _ble.scanForDevices(withServices: [_serviceId]).listen((device) async {
-      if (device.name.contains("E-TWOW") || device.name.contains("GTSport")) {
-        listenToDevice(device.id);
-        listener.cancel();
-      }
+    await Permission.location.request().isGranted &&
+        await Permission.bluetooth.request().isGranted;
+    _scooterConnection?.cancel();
+    setState(() {
+      _listener =
+          _ble.scanForDevices(withServices: [_serviceId], scanMode: ScanMode.lowLatency).listen((device) async {
+            listenToDevice(device.id);
+            _listener?.cancel();
+          });
     });
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _connect();
+  }
+
   void listenToDevice(String id) {
-    _ble.connectToDevice(
-      id: id,
-      connectionTimeout: const Duration(seconds: 10)
-    ).listen((connectionState) {
+    _scooterConnection?.cancel();
+    _scooterConnection = _ble
+        .connectToDevice(id: id, connectionTimeout: const Duration(seconds: 10))
+        .listen((connectionState) {
       setState(() {
         _connectionState = connectionState;
       });
@@ -90,7 +95,9 @@ class _MyHomePageState extends State<MyHomePage> {
             .subscribeToCharacteristic(characteristic)
             .listen((values) => _updateReadCharacteristics(values));
       } else if (_disconnected) {
+        _scooterConnection?.cancel();
         setState(() {
+          _listener = null;
           _locked = null;
           _lights = null;
           _mode = null;
@@ -100,10 +107,6 @@ class _MyHomePageState extends State<MyHomePage> {
           _trip = null;
           _zeroStart = null;
         });
-      }
-    }).onError((err) {
-      if (kDebugMode) {
-        print(err);
       }
     });
   }
@@ -232,7 +235,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 tooltip: '6km/h',
                 color: Colors.green,
                 onPressed:
-                _mode != null && _mode != 1 ? () => _setSpeed(1) : null,
+                    _mode != null && _mode != 1 ? () => _setSpeed(1) : null,
                 iconSize: 70,
               ),
               IconButton(
@@ -240,7 +243,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 tooltip: '20km/h',
                 color: Colors.blue,
                 onPressed:
-                _mode != null && _mode != 2 ? () => _setSpeed(2) : null,
+                    _mode != null && _mode != 2 ? () => _setSpeed(2) : null,
                 iconSize: 70,
               ),
               IconButton(
@@ -248,7 +251,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 tooltip: '25km/h',
                 color: Colors.yellow,
                 onPressed:
-                _mode != null && _mode != 3 ? () => _setSpeed(3) : null,
+                    _mode != null && _mode != 3 ? () => _setSpeed(3) : null,
                 iconSize: 70,
               ),
               IconButton(
@@ -256,18 +259,10 @@ class _MyHomePageState extends State<MyHomePage> {
                 tooltip: '35km/h',
                 color: Colors.red,
                 onPressed:
-                _mode != null && _mode != 0 ? () => _setSpeed(0) : null,
+                    _mode != null && _mode != 0 ? () => _setSpeed(0) : null,
                 iconSize: 70,
               ),
             ],
-          ),
-          Text(
-            'MAC: ${_disconnected ? "lost connection" : (_connectionState!.deviceId ?? "searching")}',
-            style: const TextStyle(fontSize: 20.0),
-          ),
-          Text(
-            'Connected: ${_connectionState?.connectionState}',
-            style: const TextStyle(fontSize: 20.0),
           ),
           Text(
             _speed != null ? "Speed: ${_speed! / 10}" : "",
@@ -288,15 +283,24 @@ class _MyHomePageState extends State<MyHomePage> {
           Text(
             _battery != null ? "Battery: $_battery %" : "",
             style: const TextStyle(fontSize: 20.0),
-          )
+          ),
+          Text(
+              _connected ? "Connected" : _connecting ? "Connecting" : "Disconnected",
+            style: const TextStyle(fontSize: 20.0),
+          ),
+          Text(
+            _disconnected && _listener != null ? "Scanning for scooter" : "",
+            style: const TextStyle(fontSize: 20.0),
+          ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-          onPressed: _connect,
-          icon: const Icon(Icons.bluetooth),
-          backgroundColor: Colors.blue,
-          label: const Text("Reconnect"))
-      ,
+      floatingActionButton: _listener == null
+          ? FloatingActionButton.extended(
+              onPressed: _connect,
+              icon: const Icon(Icons.bluetooth),
+              backgroundColor: Colors.blue,
+              label: const Text("Connect"))
+          : null,
     );
   }
 }
