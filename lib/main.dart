@@ -1,15 +1,16 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -17,7 +18,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.yellow,
       ),
-      home: MyHomePage(title: 'E-Twow GT SE Unofficial App'),
+      home: const MyHomePage(title: 'E-Twow GT SE Unofficial App'),
     );
   }
 }
@@ -31,11 +32,28 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
+String gTName = "E-TWOW";
+String gTSportName = "GTSport";
+
+enum ModelScooter { gTName, gTSportName }
+
 class _MyHomePageState extends State<MyHomePage> {
   final _ble = FlutterReactiveBle();
-  final _serviceId = Uuid.parse("0000ffe0-0000-1000-8000-00805f9b34fb");
-  final _serviceIdRead = Uuid.parse("0000ffe1-0000-1000-8000-00805f9b34fb");
-  final _characteristicId = Uuid.parse("0000ffe1-0000-1000-8000-00805f9b34fb");
+  final _serviceId = {
+    ModelScooter.gTName: Uuid.parse("0000ffe0-0000-1000-8000-00805f9b34fb"),
+    ModelScooter.gTSportName:
+    Uuid.parse("0000ff00-0000-1000-8000-00805f9b34fb"),
+  };
+  final _serviceIdRead = {
+    ModelScooter.gTName: Uuid.parse("0000ffe1-0000-1000-8000-00805f9b34fb"),
+    ModelScooter.gTSportName:
+    Uuid.parse("0000ff03-0000-1000-8000-00805f9b34fb"),
+  };
+  final _characteristicId = {
+    ModelScooter.gTName: Uuid.parse("0000ffe1-0000-1000-8000-00805f9b34fb"),
+    ModelScooter.gTSportName:
+    Uuid.parse("0000ff02-0000-1000-8000-00805f9b34fb"),
+  };
   late StreamSubscription<DiscoveredDevice> listener;
   bool? _locked;
   bool? _zeroStart;
@@ -65,7 +83,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _scooterConnection?.cancel();
     setState(() {
       _listener =
-          _ble.scanForDevices(withServices: [_serviceId], scanMode: ScanMode.lowLatency).listen((device) async {
+          _ble.scanForDevices(withServices: [_serviceId[ModelScooter.gTName]!], scanMode: ScanMode.lowLatency).listen((device) async {
             listenToDevice(device.id);
             _listener?.cancel();
           });
@@ -87,8 +105,8 @@ class _MyHomePageState extends State<MyHomePage> {
       });
       if (_connected) {
         final characteristic = QualifiedCharacteristic(
-            serviceId: _serviceIdRead,
-            characteristicId: _characteristicId,
+            serviceId: _serviceIdRead[ModelScooter.gTName]!,
+            characteristicId: _characteristicId[ModelScooter.gTName]!,
             deviceId: _connectionState!.deviceId);
         _ble
             .subscribeToCharacteristic(characteristic)
@@ -151,8 +169,8 @@ class _MyHomePageState extends State<MyHomePage> {
   void _send(List<int> values) {
     if (_connected) {
       final characteristic = QualifiedCharacteristic(
-          serviceId: _serviceId,
-          characteristicId: _characteristicId,
+          serviceId: _serviceId[ModelScooter.gTName]!,
+          characteristicId: _characteristicId[ModelScooter.gTName]!,
           deviceId: _connectionState!.deviceId);
       final allValues = [0x55];
       allValues.addAll(values);
