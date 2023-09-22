@@ -20,51 +20,71 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  bool _checkingDevicesName = false;
-  String? _checkingDevicesNameString;
-  DiscoveredDevice? _device;
+  String? _eTwowDeviceName;
+  String? _deviceId;
   ConnectionStateUpdate? _connectionState;
   StreamSubscription<ConnectionStateUpdate>? _connectionSubscription;
   late StreamSubscription<DiscoveredDevice> _scanSubscription;
   Scooter? _scooter;
+  SharedPreferences? prefs;
 
   @override
   void initState() {
-    const QuickActions quickActions = QuickActions();
-    quickActions.initialize((shortcutType) async {
-      switch (shortcutType) {
-        case 'action_lock':
-          await _lockOn();
-          break;
-        case 'action_unlock':
-          await _lockOff();
-          break;
-        case 'action_set_speed_0':
-          await _setSpeed(0);
-          break;
-        case 'action_set_speed_2':
-          await _setSpeed(2);
-          break;
-      }
-    });
-    quickActions.setShortcutItems(<ShortcutItem>[
-      const ShortcutItem(
-          type: 'action_lock', localizedTitle: 'lock 🔒', icon: "ic_launcher"),
-      const ShortcutItem(
-          type: 'action_unlock',
-          localizedTitle: 'unlock 🔓',
-          icon: "ic_launcher"),
-      const ShortcutItem(
-          type: 'action_set_speed_2',
-          localizedTitle: '20 km/h ⚡️',
-          icon: "ic_launcher"),
-      const ShortcutItem(
-          type: 'action_set_speed_0',
-          localizedTitle: '⚡️⚡️⚡️',
-          icon: "ic_launcher"),
-    ]);
-    _startScan();
     super.initState();
+    const QuickActions quickActions = QuickActions();
+    () async {
+      quickActions.initialize((shortcutType) async {
+        await init();
+        switch (shortcutType) {
+          case 'action_lock':
+            await _lockOn();
+            break;
+          case 'action_unlock':
+            await _lockOff();
+            break;
+          case 'action_set_speed_0':
+            await _setSpeed(0);
+            break;
+          case 'action_set_speed_2':
+            await _setSpeed(2);
+            break;
+        }
+      });
+      quickActions.setShortcutItems(<ShortcutItem>[
+        const ShortcutItem(
+            type: 'action_lock',
+            localizedTitle: 'lock 🔒',
+            icon: "ic_launcher"),
+        const ShortcutItem(
+            type: 'action_unlock',
+            localizedTitle: 'unlock 🔓',
+            icon: "ic_launcher"),
+        const ShortcutItem(
+            type: 'action_set_speed_2',
+            localizedTitle: '20 km/h ⚡️',
+            icon: "ic_launcher"),
+        const ShortcutItem(
+            type: 'action_set_speed_0',
+            localizedTitle: '⚡️⚡️⚡️',
+            icon: "ic_launcher"),
+      ]);
+      await init();
+    }();
+  }
+
+  Future<void> init() async {
+    prefs = await SharedPreferences.getInstance();
+    var eTwowDeviceName = prefs?.getString('eTwowDeviceName');
+    var deviceId = prefs?.getString('deviceId');
+    if (eTwowDeviceName == null || deviceId == null) {
+      await _startScan();
+    } else {
+      setState(() {
+        _eTwowDeviceName = eTwowDeviceName;
+        _deviceId = deviceId;
+      });
+      await _connectToDevice();
+    }
   }
 
   @override
@@ -74,59 +94,68 @@ class _MyHomePageState extends State<MyHomePage> {
     super.dispose();
   }
 
-  void _startScan() async {
+  _startScan() async {
+    Completer done = Completer();
     if (await Permission.locationWhenInUse.request().isGranted &&
         await Permission.bluetoothScan.request().isGranted &&
         await Permission.bluetoothConnect.request().isGranted) {
       _scanSubscription = flutterReactiveBle
           .scanForDevices(withServices: []).listen((device) async {
         var eTwowDeviceName = getEtwowDeviceName(device);
-        setState(() {
-          _checkingDevicesName = true;
-          _checkingDevicesNameString = device.name;
-        });
         if (eTwowDeviceName != null) {
           setState(() {
-            _device = device;
+            _eTwowDeviceName = eTwowDeviceName;
+            _deviceId = device.id;
           });
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('eTwowDeviceName', eTwowDeviceName);
-          await prefs.setString('deviceId', device.id);
+          await prefs?.setString('eTwowDeviceName', eTwowDeviceName);
+          await prefs?.setString('deviceId', device.id);
           await _scanSubscription.cancel();
-          _connectToDevice();
+          await _connectToDevice();
+          return done.complete();
         }
       });
     }
   }
 
-  void _connectToDevice() {
-    if (_device != null) {
-      _connectionSubscription?.cancel();
-      _connectionSubscription = flutterReactiveBle
-          .connectToDevice(
-              id: _device!.id, connectionTimeout: const Duration(seconds: 5))
-          .listen((connectionState) {
-        setState(() {
-          _connectionState = connectionState;
-        });
-        if (connectionState.connectionState ==
-            DeviceConnectionState.disconnected) {
-          setState(() {
-            _scooter = null;
-          });
-          _connectToDevice();
-        } else if (connectionState.connectionState ==
-            DeviceConnectionState.connected) {
-          var model = getEtwowDeviceName(_device!);
-          final characteristic = QualifiedCharacteristic(
-              serviceId: serviceId[model]!,
-              characteristicId: characteristicId[model]!,
-              deviceId: connectionState.deviceId);
-          flutterReactiveBle
-              .subscribeToCharacteristic(characteristic)
-              .listen((values) => _updateReadCharacteristics(values));
-        }
+  Future _listenConnectToDevice() async {
+    Completer completer = Completer();
+
+    _connectionSubscription?.cancel();
+    _connectionSubscription = flutterReactiveBle
+        .connectToDevice(
+            id: _deviceId!, connectionTimeout: const Duration(seconds: 5))
+        .listen((connectionState) {
+      setState(() {
+        _connectionState = connectionState;
       });
+      if (connectionState.connectionState ==
+          DeviceConnectionState.disconnected) {
+        setState(() {
+          _scooter = null;
+        });
+        completer = Completer();
+        _connectToDevice();
+      } else if (connectionState.connectionState ==
+          DeviceConnectionState.connected) {
+        if (!completer.isCompleted) {
+          return completer.complete();
+        }
+      }
+    });
+
+    return completer.future;
+  }
+
+  _connectToDevice() async {
+    if (_deviceId != null && _eTwowDeviceName != null) {
+      await _listenConnectToDevice();
+      final characteristic = QualifiedCharacteristic(
+          serviceId: serviceId[_eTwowDeviceName]!,
+          characteristicId: characteristicId[_eTwowDeviceName]!,
+          deviceId: _deviceId!);
+      flutterReactiveBle
+          .subscribeToCharacteristic(characteristic)
+          .listen((values) => _updateReadCharacteristics(values));
     }
   }
 
@@ -139,24 +168,10 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   _send(List<int> values) async {
-    final String? eTwowDeviceName;
-    final String? deviceId;
-    if (_device == null) {
-      final prefs = await SharedPreferences.getInstance();
-
-      eTwowDeviceName = prefs.getString('eTwowDeviceName');
-      deviceId = prefs.getString('deviceId');
-    } else {
-      eTwowDeviceName = getEtwowDeviceName(_device!);
-      deviceId = _device?.id;
-    }
-    if (eTwowDeviceName == null || deviceId == null) {
-      return _startScan();
-    }
     final characteristic = QualifiedCharacteristic(
-        serviceId: serviceId[eTwowDeviceName]!,
-        characteristicId: characteristicId[eTwowDeviceName]!,
-        deviceId: deviceId);
+        serviceId: serviceId[_eTwowDeviceName]!,
+        characteristicId: characteristicId[_eTwowDeviceName]!,
+        deviceId: _deviceId!);
     final allValues = [0x55];
     allValues.addAll(values);
     allValues.add(allValues.reduce((p, c) => p + c));
@@ -205,7 +220,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   String get message {
-    if (_device == null) {
+    if (_eTwowDeviceName == null || _deviceId == null) {
       return "Searching for ETWOW scooter";
     }
     if (_connectionState == null) {
@@ -213,13 +228,13 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     switch (_connectionState?.connectionState) {
       case DeviceConnectionState.connecting:
-        return "Connecting to ${_device?.name}";
+        return "Connecting to $_eTwowDeviceName";
       case DeviceConnectionState.connected:
-        return "Connected to ${_device?.name}";
+        return "Connected to $_eTwowDeviceName";
       case DeviceConnectionState.disconnecting:
-        return "Disconnecting from ${_device?.name}";
+        return "Disconnecting from $_eTwowDeviceName";
       case DeviceConnectionState.disconnected:
-        return "Disconnected from ${_device?.name}";
+        return "Disconnected from $_eTwowDeviceName";
       default:
         return "";
     }
@@ -342,12 +357,6 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             Text(
               message,
-              style: const TextStyle(fontSize: 20.0),
-            ),
-            Text(
-              _checkingDevicesName
-                  ? "Checking ble device ${_checkingDevicesNameString!.isEmpty ? "<no name>" : _checkingDevicesNameString} to contain $gTName or $gTSportName"
-                  : "No ble device found yet",
               style: const TextStyle(fontSize: 20.0),
             ),
           ],
