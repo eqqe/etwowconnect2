@@ -39,7 +39,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _startScan() async {
-    if (await Permission.bluetoothScan.request().isGranted &&
+    if (await Permission.locationWhenInUse.request().isGranted &&
+        await Permission.bluetoothScan.request().isGranted &&
         await Permission.bluetoothConnect.request().isGranted) {
       _scanSubscription = flutterReactiveBle
           .scanForDevices(withServices: []).listen((device) async {
