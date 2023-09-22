@@ -77,14 +77,20 @@ class _MyHomePageState extends State<MyHomePage> {
     await Permission.location.request().isGranted &&
         await Permission.bluetooth.request().isGranted;
     _scooterConnection?.cancel();
-    setState(() {
-      _listener = _ble.scanForDevices(withServices: [
-        _serviceId[gTName]!
-      ]).listen((device) async {
-        listenToDevice(device);
-        _listener?.cancel();
+    if (_connectionState?.deviceId != null) {
+      listenToDevice(_connectionState!.deviceId);
+    } else {
+      setState(() {
+        _listener = _ble.scanForDevices(
+            withServices: [_serviceId[gTName]!]).listen((device) async {
+          setState(() {
+            _model = device.name.contains(gTSportName) ? gTSportName : gTName;
+          });
+          listenToDevice(device.id);
+          _listener?.cancel();
+        });
       });
-    });
+    }
   }
 
   @override
@@ -93,13 +99,12 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
   }
 
-  void listenToDevice(DiscoveredDevice device) {
+  void listenToDevice(String deviceId) {
     _scooterConnection = _ble
         .connectToDevice(
-            id: device.id, connectionTimeout: const Duration(seconds: 15))
+            id: deviceId, connectionTimeout: const Duration(seconds: 5))
         .listen((connectionState) {
       setState(() {
-        _model = device.name.contains(gTSportName) ? gTSportName : gTName;
         _connectionState = connectionState;
       });
       if (_connected) {
