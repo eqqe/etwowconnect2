@@ -17,6 +17,8 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  bool _checkingDevicesName = false;
+  String? _checkingDevicesNameString;
   DiscoveredDevice? _device;
   ConnectionStateUpdate? _connectionState;
   StreamSubscription<ConnectionStateUpdate>? _connectionSubscription;
@@ -42,6 +44,10 @@ class _MyHomePageState extends State<MyHomePage> {
     _scanSubscription = flutterReactiveBle
         .scanForDevices(withServices: []).listen((device) async {
       var eTwowDeviceName = getEtwowDeviceName(device);
+      setState(() {
+        _checkingDevicesName = true;
+        _checkingDevicesNameString = device.name;
+      });
       if (eTwowDeviceName != null) {
         setState(() {
           _device = device;
@@ -261,6 +267,12 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             Text(
               message,
+              style: const TextStyle(fontSize: 20.0),
+            ),
+            Text(
+              _checkingDevicesName
+                  ? "Checking ble device ${_checkingDevicesNameString!.isEmpty ? "<no name>" : _checkingDevicesNameString} to contain $gTName or $gTSportName"
+                  : "Not ble device found yet",
               style: const TextStyle(fontSize: 20.0),
             ),
           ],
