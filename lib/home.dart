@@ -138,7 +138,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _connectionSubscription?.cancel();
     _connectionSubscription = flutterReactiveBle
         .connectToDevice(
-            id: _deviceId!, connectionTimeout: const Duration(seconds: 5))
+            id: _deviceId!, connectionTimeout: const Duration(seconds: 15))
         .listen((connectionState) async {
       setState(() {
         _connectionState = connectionState;
@@ -148,6 +148,7 @@ class _MyHomePageState extends State<MyHomePage> {
         setState(() {
           _scooter = null;
         });
+        await Future.delayed(const Duration(seconds: 2));
         await _connectToDevice();
       } else if (connectionState.connectionState ==
           DeviceConnectionState.connected) {
