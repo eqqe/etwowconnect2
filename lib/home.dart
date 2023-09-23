@@ -291,7 +291,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   icon: const Icon(Icons.lock_open),
                   color: Colors.green,
                   tooltip: 'Lock',
-                  onPressed: _scooter?.locked ?? false ? _lockOff : null,
+                  onPressed: _lockOff,
                   iconSize: 120,
                 ),
                 IconButton(
