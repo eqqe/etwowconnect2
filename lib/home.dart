@@ -95,13 +95,13 @@ class _MyHomePageState extends State<MyHomePage> {
     var eTwowDeviceName = prefs?.getString('eTwowDeviceName');
     var deviceId = prefs?.getString('deviceId');
     if (eTwowDeviceName == null || deviceId == null) {
-      await _startScan();
+      return _startScan();
     } else {
       setState(() {
         _eTwowDeviceName = eTwowDeviceName;
         _deviceId = deviceId;
       });
-      await _connectToDevice();
+      return _connectToDevice();
     }
   }
 
@@ -162,6 +162,8 @@ class _MyHomePageState extends State<MyHomePage> {
         return firstConnectionOk.complete();
       }
     });
+
+    return firstConnectionOk.future;
   }
 
   void _updateReadCharacteristics(List<int> values) {
