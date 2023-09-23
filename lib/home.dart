@@ -8,6 +8,8 @@ import 'package:quick_actions/quick_actions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
+import 'lifecycle.dart';
+
 final flutterReactiveBle = FlutterReactiveBle();
 
 class MyHomePage extends StatefulWidget {
@@ -24,13 +26,29 @@ class _MyHomePageState extends State<MyHomePage> {
   String? _deviceId;
   ConnectionStateUpdate? _connectionState;
   StreamSubscription<ConnectionStateUpdate>? _connectionSubscription;
-  late StreamSubscription<DiscoveredDevice> _scanSubscription;
+  StreamSubscription<List<int>>? _readSubscription;
+  StreamSubscription<DiscoveredDevice>? _scanSubscription;
   Scooter? _scooter;
   SharedPreferences? prefs;
 
   @override
   void initState() {
     super.initState();
+
+    WidgetsBinding.instance
+        .addObserver(LifecycleEventHandler(resumeCallBack: () async {
+      return await init();
+    }, suspendingCallBack: () {
+      _readSubscription?.cancel();
+      _connectionSubscription?.cancel();
+      _scanSubscription?.cancel();
+      setState(() {
+        _connectionState = null;
+        _scooter = null;
+      });
+      return Completer().future;
+    }));
+
     const QuickActions quickActions = QuickActions();
     () async {
       quickActions.initialize((shortcutType) async {
@@ -87,13 +105,6 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  @override
-  void dispose() {
-    _connectionSubscription?.cancel();
-    _scanSubscription.cancel();
-    super.dispose();
-  }
-
   _startScan() async {
     Completer done = Completer();
     if (await Permission.locationWhenInUse.request().isGranted &&
@@ -109,7 +120,7 @@ class _MyHomePageState extends State<MyHomePage> {
           });
           await prefs?.setString('eTwowDeviceName', eTwowDeviceName);
           await prefs?.setString('deviceId', device.id);
-          await _scanSubscription.cancel();
+          await _scanSubscription?.cancel();
           await _connectToDevice();
           return done.complete();
         }
@@ -120,11 +131,15 @@ class _MyHomePageState extends State<MyHomePage> {
   _connectToDevice() async {
     Completer firstConnectionOk = Completer();
 
+    if (_connectionState?.connectionState == DeviceConnectionState.connected) {
+      return firstConnectionOk.complete();
+    }
+    _readSubscription?.cancel();
     _connectionSubscription?.cancel();
     _connectionSubscription = flutterReactiveBle
         .connectToDevice(
             id: _deviceId!, connectionTimeout: const Duration(seconds: 5))
-        .listen((connectionState) async{
+        .listen((connectionState) async {
       setState(() {
         _connectionState = connectionState;
       });
@@ -140,12 +155,10 @@ class _MyHomePageState extends State<MyHomePage> {
             serviceId: serviceId[_eTwowDeviceName]!,
             characteristicId: characteristicId[_eTwowDeviceName]!,
             deviceId: _deviceId!);
-        flutterReactiveBle
+        _readSubscription = flutterReactiveBle
             .subscribeToCharacteristic(characteristic)
             .listen((values) => _updateReadCharacteristics(values));
-        if (!firstConnectionOk.isCompleted) {
-          return firstConnectionOk.complete();
-        }
+        return firstConnectionOk.complete();
       }
     });
   }
