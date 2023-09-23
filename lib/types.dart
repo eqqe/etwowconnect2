@@ -18,5 +18,5 @@ var serviceId = {
 };
 var characteristicId = {
   gTName: Uuid.parse("0000ffe1-0000-1000-8000-00805f9b34fb"),
-  gTSportName: Uuid.parse("0000ff02-0000-1000-8000-00805f9b34fb"),
+  gTSportName: Uuid.parse("0000ff03-0000-1000-8000-00805f9b34fb"),
 };
