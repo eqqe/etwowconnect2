@@ -140,6 +140,7 @@ class _MyHomePageState extends State<MyHomePage> {
         }
       });
     }
+    return done.future;
   }
 
   Future<void> _subscribeToCharacteristic() async {
