@@ -52,18 +52,21 @@ class _MyHomePageState extends State<MyHomePage> {
     const QuickActions quickActions = QuickActions();
     () async {
       quickActions.initialize((shortcutType) async {
-        await init();
         switch (shortcutType) {
           case 'action_lock':
+            await initWaitForSpeedValue();
             await _lockOn();
             break;
           case 'action_unlock':
+            await init();
             await _lockOff();
             break;
           case 'action_set_speed_0':
+            await init();
             await _setSpeed(0);
             break;
           case 'action_set_speed_2':
+            await init();
             await _setSpeed(2);
             break;
         }
@@ -86,23 +89,33 @@ class _MyHomePageState extends State<MyHomePage> {
             localizedTitle: '⚡️⚡️⚡️',
             icon: "ic_launcher"),
       ]);
-      await init();
+      await initWaitForSpeedValue();
     }();
   }
 
   Future<void> init() async {
+    await initBase();
+    _subscribeToCharacteristic();
+  }
+
+  Future<void> initWaitForSpeedValue() async {
+    await initBase();
+    await _subscribeToCharacteristic();
+  }
+
+  Future<void> initBase() async {
     prefs = await SharedPreferences.getInstance();
     var eTwowDeviceName = prefs?.getString('eTwowDeviceName');
     var deviceId = prefs?.getString('deviceId');
     if (eTwowDeviceName == null || deviceId == null) {
-      return _startScan();
+      await _startScan();
     } else {
       setState(() {
         _eTwowDeviceName = eTwowDeviceName;
         _deviceId = deviceId;
       });
-      return _connectToDevice();
     }
+    await _connectToDevice();
   }
 
   _startScan() async {
@@ -121,11 +134,34 @@ class _MyHomePageState extends State<MyHomePage> {
           await prefs?.setString('eTwowDeviceName', eTwowDeviceName);
           await prefs?.setString('deviceId', device.id);
           await _scanSubscription?.cancel();
-          await _connectToDevice();
-          return done.complete();
+          if (!done.isCompleted) {
+            return done.complete();
+          }
         }
       });
     }
+  }
+
+  Future<void> _subscribeToCharacteristic() async {
+    Completer firstReadSpeedValue = Completer();
+    _readSubscription?.cancel();
+    final characteristic = QualifiedCharacteristic(
+        serviceId: serviceId[_eTwowDeviceName]!,
+        characteristicId: characteristicId[_eTwowDeviceName]!,
+        deviceId: _deviceId!);
+    _readSubscription = flutterReactiveBle
+        .subscribeToCharacteristic(characteristic)
+        .listen((values) {
+      _scooter ??= Scooter();
+      _scooter!.updateScooterValues(values);
+      if (_scooter?.speed != null && !firstReadSpeedValue.isCompleted) {
+        firstReadSpeedValue.complete();
+      }
+      setState(() {
+        _scooter = _scooter;
+      });
+    });
+    return firstReadSpeedValue.future;
   }
 
   _connectToDevice() async {
@@ -152,26 +188,13 @@ class _MyHomePageState extends State<MyHomePage> {
         await _connectToDevice();
       } else if (connectionState.connectionState ==
           DeviceConnectionState.connected) {
-        final characteristic = QualifiedCharacteristic(
-            serviceId: serviceId[_eTwowDeviceName]!,
-            characteristicId: characteristicId[_eTwowDeviceName]!,
-            deviceId: _deviceId!);
-        _readSubscription = flutterReactiveBle
-            .subscribeToCharacteristic(characteristic)
-            .listen((values) => _updateReadCharacteristics(values));
-        return firstConnectionOk.complete();
+        if (!firstConnectionOk.isCompleted) {
+          return firstConnectionOk.complete();
+        }
       }
     });
 
     return firstConnectionOk.future;
-  }
-
-  void _updateReadCharacteristics(List<int> values) {
-    _scooter ??= Scooter();
-    _scooter!.updateScooterValues(values);
-    setState(() {
-      _scooter = _scooter;
-    });
   }
 
   _send(List<int> values) async {
