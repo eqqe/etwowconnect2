@@ -148,7 +148,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _readSubscription?.cancel();
     final characteristic = QualifiedCharacteristic(
         serviceId: serviceId[_eTwowDeviceName]!,
-        characteristicId: characteristicId[_eTwowDeviceName]!,
+        characteristicId: readCharateristicId[_eTwowDeviceName]!,
         deviceId: _deviceId!);
     _readSubscription = flutterReactiveBle
         .subscribeToCharacteristic(characteristic)
@@ -201,7 +201,7 @@ class _MyHomePageState extends State<MyHomePage> {
   _send(List<int> values) async {
     final characteristic = QualifiedCharacteristic(
         serviceId: serviceId[_eTwowDeviceName]!,
-        characteristicId: characteristicId[_eTwowDeviceName]!,
+        characteristicId: writeCharateristicId[_eTwowDeviceName]!,
         deviceId: _deviceId!);
     final allValues = [0x55];
     allValues.addAll(values);
