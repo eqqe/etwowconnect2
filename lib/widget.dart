@@ -19,16 +19,19 @@ class ScooterWidget extends ConsumerWidget {
 
     final connectionState = ref.watch(bleScanner);
     final scooter = ref.watch(scooterProvider);
-    final send = ref.watch(scooterProvider.notifier).send;
+    final scooterProviderNotifier = ref.watch(scooterProvider.notifier);
+    final send = scooterProviderNotifier.send;
 
-    String status = 'Scanning';
+    var status = "Scanning";
 
     connectionState.whenData((state) {
       if (state.connectionState == DeviceConnectionState.connected) {
         status = 'Connected';
       } else if (state.connectionState == DeviceConnectionState.connecting) {
         status = 'Connecting';
-      } else {
+      } else if (state.connectionState == DeviceConnectionState.disconnecting) {
+        status = 'Disconnecting';
+      } else if (state.connectionState == DeviceConnectionState.disconnected) {
         status = 'Disconnected';
       }
     });

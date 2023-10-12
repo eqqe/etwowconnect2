@@ -20,6 +20,10 @@ class ScooterNotifier extends StateNotifier<Scooter> {
     state = Scooter.fromScooter(state, values);
   }
 
+  void reset(){
+    state = Scooter();
+  }
+
   Future<void> send(List<int> values) async {
     final characteristic = QualifiedCharacteristic(
         serviceId: serviceId[deviceName]!, characteristicId: writeCharacteristicId[deviceName]!, deviceId: deviceId!);
@@ -36,6 +40,7 @@ final scooterProvider = StateNotifierProvider<ScooterNotifier, Scooter>((ref) {
 
 const prefDeviceId = "prefDeviceId";
 const prefDeviceName = "prefDeviceName";
+
 final bleScanner = StreamProvider.autoDispose<ConnectionStateUpdate>((ref) async* {
   final prefs = await ref.watch(sharedPrefsProvider);
   var deviceId = prefs.getString(prefDeviceId);
@@ -59,8 +64,8 @@ final bleScanner = StreamProvider.autoDispose<ConnectionStateUpdate>((ref) async
     }
   }
 
-  ref.read(scooterProvider.notifier).deviceId = deviceId;
-  ref.read(scooterProvider.notifier).deviceName = deviceName;
+  scooterNotifier.deviceId = deviceId;
+  scooterNotifier.deviceName = deviceName;
 
   Stream<ConnectionStateUpdate> connect() async* {
     while (true) {
@@ -69,7 +74,7 @@ final bleScanner = StreamProvider.autoDispose<ConnectionStateUpdate>((ref) async
     }
   }
 
-  connect().listen((connectionState) {
+  await for (final connectionState in connect()) {
     if (connectionState.connectionState == DeviceConnectionState.connected) {
       final characteristic = QualifiedCharacteristic(
           serviceId: serviceId[deviceName]!, characteristicId: readCharacteristicId[deviceName]!, deviceId: deviceId!);
@@ -77,5 +82,9 @@ final bleScanner = StreamProvider.autoDispose<ConnectionStateUpdate>((ref) async
         scooterNotifier.updateValues(value);
       });
     }
-  });
+    else if (connectionState.connectionState == DeviceConnectionState.disconnected) {
+      scooterNotifier.reset();
+    }
+    yield connectionState;
+  }
 });
