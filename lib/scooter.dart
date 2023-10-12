@@ -1,4 +1,7 @@
+import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
+
 class Scooter {
+  DeviceConnectionState? connectionState;
   bool? locked;
   bool? zeroStart;
   bool? lights;
@@ -8,7 +11,18 @@ class Scooter {
   int? battery;
   int? speed;
 
-  updateScooterValues(List<int> values) {
+  Scooter();
+
+  Scooter.fromScooter(Scooter scooter, List<int> values) {
+    connectionState = scooter.connectionState;
+    locked = scooter.locked;
+    zeroStart = scooter.zeroStart;
+    lights = scooter.lights;
+    mode = scooter.mode;
+    odo = scooter.odo;
+    trip = scooter.trip;
+    battery = scooter.battery;
+    speed = scooter.speed;
     final value = values[1];
     switch (values[0]) {
       case 1:
@@ -34,4 +48,5 @@ class Scooter {
         break;
     }
   }
+
 }

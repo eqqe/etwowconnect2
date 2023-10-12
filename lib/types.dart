@@ -1,7 +1,7 @@
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 
-String gTName = "E-TWOW";
-String gTSportName = "GTSport";
+const gTName = "E-TWOW";
+const gTSportName = "GTSport";
 
 var getEtwowDeviceName = (DiscoveredDevice device) {
   if (device.name.contains(gTName)) {
@@ -17,12 +17,12 @@ var serviceId = {
   gTSportName: Uuid.parse("0000ff00-0000-1000-8000-00805f9b34fb"),
 };
 
-var readCharateristicId = {
+var readCharacteristicId = {
   gTName: Uuid.parse("0000ffe1-0000-1000-8000-00805f9b34fb"),
   gTSportName: Uuid.parse("0000ff01-0000-1000-8000-00805f9b34fb"),
 };
 
-var writeCharateristicId = {
+var writeCharacteristicId = {
   gTName: Uuid.parse("0000ffe1-0000-1000-8000-00805f9b34fb"),
   gTSportName: Uuid.parse("0000ff02-0000-1000-8000-00805f9b34fb"),
 };
