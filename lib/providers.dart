@@ -26,13 +26,24 @@ class ScooterNotifier extends StateNotifier<Scooter> {
     state = Scooter();
   }
 
-  Future<void> send(List<int> values) async {
-    final characteristic = QualifiedCharacteristic(
-        serviceId: serviceId[deviceName]!, characteristicId: writeCharacteristicId[deviceName]!, deviceId: deviceId!);
-    final allValues = [0x55];
-    allValues.addAll(values);
-    allValues.add(allValues.reduce((p, c) => p + c));
-    await ble.writeCharacteristicWithResponse(characteristic, value: allValues);
+  Future<bool> send(List<int> values) async {
+    if (state.connectionState == DeviceConnectionState.connected &&
+        deviceName != null &&
+        deviceId != null &&
+        serviceId[deviceName] != null &&
+        writeCharacteristicId[deviceName] != null) {
+      toast("Error serviceId null for $deviceName");
+      final characteristic = QualifiedCharacteristic(
+          serviceId: serviceId[deviceName]!, characteristicId: writeCharacteristicId[deviceName]!, deviceId: deviceId!);
+      final allValues = [0x55];
+      allValues.addAll(values);
+      allValues.add(allValues.reduce((p, c) => p + c));
+      await ble.writeCharacteristicWithResponse(characteristic, value: allValues);
+      return true;
+    } else {
+      toast("Error trying to launch action while disconnected");
+      return false;
+    }
   }
 }
 

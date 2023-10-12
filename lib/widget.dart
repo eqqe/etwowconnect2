@@ -1,10 +1,10 @@
 import 'package:etwowconnect2/providers.dart';
 import 'package:etwowconnect2/toast.dart';
+import 'package:etwowconnect2/types.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quick_actions/quick_actions.dart';
-
 
 class ScooterWidget extends ConsumerWidget {
   const ScooterWidget({super.key});
@@ -16,11 +16,13 @@ class ScooterWidget extends ConsumerWidget {
     final scooterProviderNotifier = ref.watch(scooterProvider.notifier);
     final send = scooterProviderNotifier.send;
 
-    var status = "";
+    var status = "Scanning $gTName or $gTSportName";
+    var connected = false;
 
     connectionState.whenData((state) {
       if (state.connectionState == DeviceConnectionState.connected) {
         status = 'Connected';
+        connected = true;
       } else if (state.connectionState == DeviceConnectionState.connecting) {
         status = 'Connecting';
       } else if (state.connectionState == DeviceConnectionState.disconnecting) {
@@ -32,37 +34,64 @@ class ScooterWidget extends ConsumerWidget {
 
     lockOn() async {
       if (scooter.speed == 0) {
-        await send([0x05, 0x05, 0x01]);
-        toast("Locked");
+        if (await send([0x05, 0x05, 0x01])) {
+          toast("Locked");
+        }
       } else {
         toast("Cannot lock as speed is not 0");
       }
     }
 
     lockOff() async {
-      await send([0x05, 0x05, 0x00]);
-      toast("Lock removed");
+      if (await send([0x05, 0x05, 0x00])) {
+        toast("Lock removed");
+      }
     }
 
     lightOn() async {
-      await send([0x06, 0x05, 0x01]);
-      toast("Lights on");
+      if (await send([0x06, 0x05, 0x01])) {
+        toast("Lights on");
+      }
     }
 
     lightOff() async {
-      await send([0x06, 0x05, 0x00]);
-      toast("Lights off");
+      if (await send([0x06, 0x05, 0x00])) {
+        toast("Lights off");
+      }
     }
 
     setSpeed(int mode) async {
-      await send([0x02, 0x05, mode]);
-      toast("Speed set to L$mode mode");
+      if (await send([0x02, 0x05, mode])) {
+        toast("Speed set to L$mode mode");
+      }
     }
 
-
+    const QuickActions quickActions = QuickActions();
+    quickActions.initialize((shortcutType) async {
+      switch (shortcutType) {
+        case 'action_lock':
+          await lockOn();
+          break;
+        case 'action_unlock':
+          await lockOff();
+          break;
+        case 'action_set_speed_0':
+          await setSpeed(0);
+          break;
+        case 'action_set_speed_2':
+          await setSpeed(2);
+          break;
+      }
+    });
+    quickActions.setShortcutItems(<ShortcutItem>[
+      const ShortcutItem(type: 'action_lock', localizedTitle: 'lock 🔒', icon: "ic_launcher"),
+      const ShortcutItem(type: 'action_unlock', localizedTitle: 'unlock 🔓', icon: "ic_launcher"),
+      const ShortcutItem(type: 'action_set_speed_2', localizedTitle: '20 km/h ⚡️', icon: "ic_launcher"),
+      const ShortcutItem(type: 'action_set_speed_0', localizedTitle: '⚡️⚡️⚡️', icon: "ic_launcher"),
+    ]);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('E-Twow GT SE Unofficial App'),
+        title: const Text('E-Twow GT SE & Sport Unofficial App'),
       ),
       body: Center(
         child: Column(
@@ -75,14 +104,14 @@ class ScooterWidget extends ConsumerWidget {
                   icon: const Icon(Icons.lock_open),
                   color: Colors.green,
                   tooltip: 'Lock',
-                  onPressed: lockOff,
+                  onPressed: connected ? lockOff : null,
                   iconSize: 120,
                 ),
                 IconButton(
                   icon: const Icon(Icons.lock),
                   color: Colors.red,
                   tooltip: 'Lock',
-                  onPressed: lockOn,
+                  onPressed: connected ? lockOn : null,
                   iconSize: 120,
                 ),
               ],
@@ -94,13 +123,13 @@ class ScooterWidget extends ConsumerWidget {
                   icon: const Icon(Icons.lightbulb),
                   tooltip: 'Light',
                   color: Colors.yellow,
-                  onPressed: lightOff,
+                  onPressed: connected ? lightOff : null,
                   iconSize: 80,
                 ),
                 IconButton(
                   icon: const Icon(Icons.lightbulb),
                   tooltip: 'Light',
-                  onPressed: lightOn,
+                  onPressed: connected ? lightOn : null,
                   iconSize: 80,
                 ),
               ],
@@ -112,36 +141,28 @@ class ScooterWidget extends ConsumerWidget {
                   icon: const Icon(Icons.speed),
                   tooltip: '6km/h',
                   color: Colors.green,
-                  onPressed: scooter.mode != null && scooter.mode != 1
-                      ? () => setSpeed(1)
-                      : null,
+                  onPressed: scooter.mode != null && scooter.mode != 1 ? () => setSpeed(1) : null,
                   iconSize: 70,
                 ),
                 IconButton(
                   icon: const Icon(Icons.speed),
                   tooltip: '20km/h',
                   color: Colors.blue,
-                  onPressed: scooter.mode != null && scooter.mode != 2
-                      ? () => setSpeed(2)
-                      : null,
+                  onPressed: scooter.mode != null && scooter.mode != 2 ? () => setSpeed(2) : null,
                   iconSize: 70,
                 ),
                 IconButton(
                   icon: const Icon(Icons.speed),
                   tooltip: '25km/h',
                   color: Colors.yellow,
-                  onPressed: scooter.mode != null && scooter.mode != 3
-                      ? () => setSpeed(3)
-                      : null,
+                  onPressed: scooter.mode != null && scooter.mode != 3 ? () => setSpeed(3) : null,
                   iconSize: 70,
                 ),
                 IconButton(
                   icon: const Icon(Icons.speed),
                   tooltip: '35km/h',
                   color: Colors.red,
-                  onPressed: scooter.mode != null && scooter.mode != 0
-                      ? () => setSpeed(0)
-                      : null,
+                  onPressed: scooter.mode != null && scooter.mode != 0 ? () => setSpeed(0) : null,
                   iconSize: 70,
                 ),
               ],
@@ -159,15 +180,11 @@ class ScooterWidget extends ConsumerWidget {
               style: const TextStyle(fontSize: 20.0),
             ),
             Text(
-              scooter.zeroStart != null
-                  ? "Zero Start: ${scooter.zeroStart}"
-                  : "",
+              scooter.zeroStart != null ? "Zero Start: ${scooter.zeroStart}" : "",
               style: const TextStyle(fontSize: 20.0),
             ),
             Text(
-              scooter.battery != null
-                  ? "Battery: ${scooter.battery} %"
-                  : "",
+              scooter.battery != null ? "Battery: ${scooter.battery} %" : "",
               style: const TextStyle(fontSize: 20.0),
             ),
             Text(
@@ -180,4 +197,3 @@ class ScooterWidget extends ConsumerWidget {
     );
   }
 }
-
