@@ -69,20 +69,22 @@ final bleScanner = StreamProvider.autoDispose<ConnectionStateUpdate>((ref) async
 
   Stream<ConnectionStateUpdate> connect() async* {
     while (true) {
-      yield* ble.connectToDevice(id: deviceId!, connectionTimeout: const Duration(seconds: 15));
-      await Future.delayed(const Duration(seconds: 3));
+      yield* ble.connectToDevice(id: deviceId!, connectionTimeout: const Duration(seconds: 10));
+      await Future.delayed(const Duration(seconds: 5));
     }
   }
 
+  StreamSubscription<List<int>>? characteristicSubscription;
   await for (final connectionState in connect()) {
     if (connectionState.connectionState == DeviceConnectionState.connected) {
       final characteristic = QualifiedCharacteristic(
           serviceId: serviceId[deviceName]!, characteristicId: readCharacteristicId[deviceName]!, deviceId: deviceId!);
-      ble.subscribeToCharacteristic(characteristic).listen((value) {
+      characteristicSubscription = ble.subscribeToCharacteristic(characteristic).listen((value) {
         scooterNotifier.updateValues(value);
       });
     }
     else if (connectionState.connectionState == DeviceConnectionState.disconnected) {
+      characteristicSubscription?.cancel();
       scooterNotifier.reset();
     }
     yield connectionState;
