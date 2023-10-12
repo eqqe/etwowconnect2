@@ -3,26 +3,20 @@ import 'package:etwowconnect2/toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:quick_actions/quick_actions.dart';
 
 
 class ScooterWidget extends ConsumerWidget {
   const ScooterWidget({super.key});
 
-  void initState() async{
-    await Permission.locationWhenInUse.request().isGranted &&
-        await Permission.bluetoothScan.request().isGranted &&
-        await Permission.bluetoothConnect.request().isGranted;
-  }
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-
     final connectionState = ref.watch(bleScanner);
     final scooter = ref.watch(scooterProvider);
     final scooterProviderNotifier = ref.watch(scooterProvider.notifier);
     final send = scooterProviderNotifier.send;
 
-    var status = "Scanning";
+    var status = "";
 
     connectionState.whenData((state) {
       if (state.connectionState == DeviceConnectionState.connected) {

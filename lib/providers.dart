@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:etwowconnect2/scooter.dart';
+import 'package:etwowconnect2/toast.dart';
 import 'package:etwowconnect2/types.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 final ble = FlutterReactiveBle();
 
@@ -20,7 +22,7 @@ class ScooterNotifier extends StateNotifier<Scooter> {
     state = Scooter.fromScooter(state, values);
   }
 
-  void reset(){
+  void reset() {
     state = Scooter();
   }
 
@@ -46,6 +48,13 @@ final bleScanner = StreamProvider.autoDispose<ConnectionStateUpdate>((ref) async
   var deviceId = prefs.getString(prefDeviceId);
   var deviceName = prefs.getString(prefDeviceName);
   final scooterNotifier = ref.watch(scooterProvider.notifier);
+
+  if (!await Permission.locationWhenInUse.request().isGranted ||
+      !await Permission.bluetoothScan.request().isGranted ||
+      !await Permission.bluetoothConnect.request().isGranted) {
+    toast("Please accept permissions");
+    return;
+  }
 
   if (deviceId == null || deviceName == null) {
     await for (final device in ble.scanForDevices(withServices: [])) {
@@ -82,8 +91,7 @@ final bleScanner = StreamProvider.autoDispose<ConnectionStateUpdate>((ref) async
       characteristicSubscription = ble.subscribeToCharacteristic(characteristic).listen((value) {
         scooterNotifier.updateValues(value);
       });
-    }
-    else if (connectionState.connectionState == DeviceConnectionState.disconnected) {
+    } else if (connectionState.connectionState == DeviceConnectionState.disconnected) {
       characteristicSubscription?.cancel();
       scooterNotifier.reset();
     }
