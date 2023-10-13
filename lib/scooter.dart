@@ -10,6 +10,9 @@ class Scooter {
   int? trip;
   int? battery;
   int? speed;
+  String? deviceId;
+  String? deviceName;
+  String? shortcutType;
 
   Scooter();
 
@@ -23,6 +26,9 @@ class Scooter {
     trip = scooter.trip;
     battery = scooter.battery;
     speed = scooter.speed;
+    deviceId = scooter.deviceId;
+    deviceName = scooter.deviceName;
+    shortcutType = scooter.shortcutType;
     final value = values[1];
     switch (values[0]) {
       case 1:

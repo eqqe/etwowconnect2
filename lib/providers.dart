@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:quick_actions/quick_actions.dart';
 
 final ble = FlutterReactiveBle();
 
@@ -15,33 +16,81 @@ final sharedPrefsProvider = Provider((ref) => SharedPreferences.getInstance());
 class ScooterNotifier extends StateNotifier<Scooter> {
   ScooterNotifier() : super(Scooter());
 
-  String? deviceId;
-  String? deviceName;
-
-  void updateValues(List<int> values) {
+  void updateValues(List<int> values) async {
     state = Scooter.fromScooter(state, values);
+    if (state.shortcutType == "action_lock" && state.speed == 0) {
+      if (await lockOn()) {
+        state.shortcutType = null;
+      }
+    }
   }
 
   void reset() {
-    state = Scooter();
+    state.battery = null;
+    state.lights = null;
+    state.locked = null;
+    state.mode = null;
+    state.odo = null;
+    state.speed = null;
+    state.trip = null;
+    state.zeroStart = null;
+  }
+
+  Future<bool> lockOn() async {
+    if (state.speed == 0) {
+      if (await send([0x05, 0x05, 0x01])) {
+        toast("Locked");
+        return true;
+      }
+    } else {
+      toast("Cannot lock as speed is not 0");
+    }
+    return false;
+  }
+
+  Future<bool> lockOff() async {
+    if (await send([0x05, 0x05, 0x00])) {
+      toast("Lock removed");
+      return true;
+    }
+    return false;
+  }
+
+  lightOn() async {
+    if (await send([0x06, 0x05, 0x01])) {
+      toast("Lights on");
+      return true;
+    }
+    return false;
+  }
+
+  lightOff() async {
+    if (await send([0x06, 0x05, 0x00])) {
+      toast("Lights off");
+      return true;
+    }
+    return false;
+  }
+
+  setSpeed(int mode) async {
+    if (await send([0x02, 0x05, mode])) {
+      toast("Speed set to L$mode mode");
+      return true;
+    }
+    return false;
   }
 
   Future<bool> send(List<int> values) async {
-    if (state.connectionState == DeviceConnectionState.connected &&
-        deviceName != null &&
-        deviceId != null &&
-        serviceId[deviceName] != null &&
-        writeCharacteristicId[deviceName] != null) {
-      toast("Error serviceId null for $deviceName");
+    if (state.connectionState == DeviceConnectionState.connected) {
       final characteristic = QualifiedCharacteristic(
-          serviceId: serviceId[deviceName]!, characteristicId: writeCharacteristicId[deviceName]!, deviceId: deviceId!);
+          serviceId: serviceId[state.deviceName]!, characteristicId: writeCharacteristicId[state.deviceName]!, deviceId: state.deviceId!);
       final allValues = [0x55];
       allValues.addAll(values);
       allValues.add(allValues.reduce((p, c) => p + c));
       await ble.writeCharacteristicWithResponse(characteristic, value: allValues);
       return true;
     } else {
-      toast("Error trying to launch action while disconnected");
+      toast("Error trying to send while not connected");
       return false;
     }
   }
@@ -56,8 +105,7 @@ const prefDeviceName = "prefDeviceName";
 
 final bleScanner = StreamProvider.autoDispose<ConnectionStateUpdate>((ref) async* {
   final prefs = await ref.watch(sharedPrefsProvider);
-  var deviceId = prefs.getString(prefDeviceId);
-  var deviceName = prefs.getString(prefDeviceName);
+  final scooter = ref.watch(scooterProvider);
   final scooterNotifier = ref.watch(scooterProvider.notifier);
 
   if (!await Permission.locationWhenInUse.request().isGranted ||
@@ -67,16 +115,19 @@ final bleScanner = StreamProvider.autoDispose<ConnectionStateUpdate>((ref) async
     return;
   }
 
-  if (deviceId == null || deviceName == null) {
+  scooter.deviceId = prefs.getString(prefDeviceId);
+  scooter.deviceName = prefs.getString(prefDeviceName);
+
+  if (scooter.deviceId == null || scooter.deviceName == null) {
     await for (final device in ble.scanForDevices(withServices: [])) {
       if (device.name.contains(gTName) || device.name.contains(gTSportName)) {
-        deviceId = device.id;
-        prefs.setString(prefDeviceId, deviceId);
+        scooter.deviceId = device.id;
+        prefs.setString(prefDeviceId, device.id);
         if (device.name.contains(gTName)) {
-          deviceName = gTName;
+          scooter.deviceName = gTName;
           prefs.setString(prefDeviceName, gTName);
         } else if (device.name.contains(gTSportName)) {
-          deviceName = gTName;
+          scooter.deviceName = gTName;
           prefs.setString(prefDeviceName, gTName);
         }
         break;
@@ -84,21 +135,51 @@ final bleScanner = StreamProvider.autoDispose<ConnectionStateUpdate>((ref) async
     }
   }
 
-  scooterNotifier.deviceId = deviceId;
-  scooterNotifier.deviceName = deviceName;
+  const QuickActions quickActions = QuickActions();
+  quickActions.initialize((shortcutType) async {
+    scooter.shortcutType = shortcutType;
+  });
+  quickActions.setShortcutItems(<ShortcutItem>[
+    const ShortcutItem(type: 'action_lock', localizedTitle: 'Lock 🔒', icon: "ic_launcher"),
+    const ShortcutItem(type: 'action_unlock', localizedTitle: 'Unlock 🔓', icon: "ic_launcher"),
+    const ShortcutItem(type: 'action_set_speed_2', localizedTitle: '20 km/h ⚡️', icon: "ic_launcher"),
+    const ShortcutItem(type: 'action_set_speed_0', localizedTitle: '⚡️⚡️⚡️', icon: "ic_launcher"),
+  ]);
 
   Stream<ConnectionStateUpdate> connect() async* {
     while (true) {
-      yield* ble.connectToDevice(id: deviceId!, connectionTimeout: const Duration(seconds: 10));
+      yield* ble.connectToDevice(id: scooter.deviceId!, connectionTimeout: const Duration(seconds: 10));
       await Future.delayed(const Duration(seconds: 5));
     }
   }
 
   StreamSubscription<List<int>>? characteristicSubscription;
   await for (final connectionState in connect()) {
+    scooter.connectionState = connectionState.connectionState;
     if (connectionState.connectionState == DeviceConnectionState.connected) {
+      if (scooter.shortcutType != null) {
+        Future<bool> Function()? actionFunction;
+        switch (scooter.shortcutType) {
+          case 'action_unlock':
+            actionFunction = scooterNotifier.lockOff;
+            break;
+          case 'action_set_speed_0':
+            actionFunction = () => scooterNotifier.setSpeed(0);
+            break;
+          case 'action_set_speed_2':
+            actionFunction = () => scooterNotifier.setSpeed(2);
+            break;
+        }
+        if (actionFunction != null) {
+          if (await actionFunction()) {
+            scooter.shortcutType = null;
+          }
+        }
+      }
       final characteristic = QualifiedCharacteristic(
-          serviceId: serviceId[deviceName]!, characteristicId: readCharacteristicId[deviceName]!, deviceId: deviceId!);
+          serviceId: serviceId[scooter.deviceName]!,
+          characteristicId: readCharacteristicId[scooter.deviceName]!,
+          deviceId: scooter.deviceId!);
       characteristicSubscription = ble.subscribeToCharacteristic(characteristic).listen((value) {
         scooterNotifier.updateValues(value);
       });
