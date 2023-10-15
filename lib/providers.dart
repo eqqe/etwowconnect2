@@ -1,7 +1,7 @@
 import 'dart:async';
-
+import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:etwowconnect2/scooter.dart';
-import 'package:etwowconnect2/toast.dart';
 import 'package:etwowconnect2/types.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
@@ -13,8 +13,23 @@ final ble = FlutterReactiveBle();
 
 final sharedPrefsProvider = Provider((ref) => SharedPreferences.getInstance());
 
-class ScooterNotifier extends StateNotifier<Scooter> {
-  ScooterNotifier() : super(Scooter());
+mixin ToastMixin {
+  void toast(String message) {
+    Fluttertoast.showToast(
+        msg: message,
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        timeInSecForIosWeb: 1,
+        backgroundColor: Colors.green,
+        textColor: Colors.white,
+        fontSize: 16.0);
+  }
+}
+
+class ScooterNotifier extends StateNotifier<Scooter> with ToastMixin {
+  FlutterReactiveBle ble;
+
+  ScooterNotifier({required this.ble}) : super(Scooter());
 
   void updateValues(List<int> values) async {
     state = Scooter.fromScooter(state, values);
@@ -87,7 +102,11 @@ class ScooterNotifier extends StateNotifier<Scooter> {
       final allValues = [0x55];
       allValues.addAll(values);
       allValues.add(allValues.reduce((p, c) => p + c));
-      await ble.writeCharacteristicWithResponse(characteristic, value: allValues);
+      try {
+        await ble.writeCharacteristicWithResponse(characteristic, value: allValues);
+      } catch (e) {
+        return false;
+      }
       return true;
     } else {
       toast("Error trying to send while not connected");
@@ -97,7 +116,7 @@ class ScooterNotifier extends StateNotifier<Scooter> {
 }
 
 final scooterProvider = StateNotifierProvider<ScooterNotifier, Scooter>((ref) {
-  return ScooterNotifier();
+  return ScooterNotifier(ble: ble);
 });
 
 const prefDeviceId = "prefDeviceId";
@@ -111,7 +130,6 @@ final bleScanner = StreamProvider.autoDispose<ConnectionStateUpdate>((ref) async
   if (!await Permission.locationWhenInUse.request().isGranted ||
       !await Permission.bluetoothScan.request().isGranted ||
       !await Permission.bluetoothConnect.request().isGranted) {
-    toast("Please accept permissions");
     return;
   }
 
