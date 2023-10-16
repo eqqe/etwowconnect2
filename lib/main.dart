@@ -5,6 +5,7 @@ import 'package:etwowconnect2/fake.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:quick_actions/quick_actions.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(const ListenableBuilderScooter());
@@ -63,17 +64,25 @@ class ScooterModel with ChangeNotifier {
       ShortcutItem(type: ShortcutType.setSpeed2.toString(), localizedTitle: '20 km/h ⚡️', icon: "ic_launcher"),
       ShortcutItem(type: ShortcutType.setSpeed0.toString(), localizedTitle: '⚡️⚡️⚡️', icon: "ic_launcher"),
     ]);
+    final sharedPref = await SharedPreferences.getInstance();
 
-    await for (final device in _ble.scanForDevices(withServices: [])) {
-      if (device.name.contains(gTName) || device.name.contains(gTSportName)) {
-        deviceId = device.id;
-        if (device.name.contains(gTName)) {
-          deviceName = gTName;
-        } else if (device.name.contains(gTSportName)) {
-          deviceName = gTName;
+    deviceId = sharedPref.getString(prefDeviceId);
+    deviceName = sharedPref.getString(prefDeviceName);
+
+    if (deviceId == null || deviceName == null) {
+      await for (final device in _ble.scanForDevices(withServices: [])) {
+        if (device.name.contains(gTName) || device.name.contains(gTSportName)) {
+          deviceId = device.id;
+          sharedPref.setString(prefDeviceId, device.id);
+          if (device.name.contains(gTName)) {
+            deviceName = gTName;
+            sharedPref.setString(prefDeviceName, gTName);
+          } else if (device.name.contains(gTSportName)) {
+            deviceName = gTName;
+            sharedPref.setString(prefDeviceName, gTSportName);
+          }
+          break;
         }
-        notifyListeners();
-        break;
       }
     }
 

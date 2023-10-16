@@ -28,3 +28,6 @@ var writeCharacteristicId = {
 };
 
 enum ShortcutType { lock, unlock, setSpeed0, setSpeed2 }
+
+const prefDeviceId = "prefDeviceId";
+const prefDeviceName = "prefDeviceName";
