@@ -113,7 +113,17 @@ class ScooterModel with ChangeNotifier {
             }
             notifyListeners();
           }
+        } else if (connectionState == DeviceConnectionState.disconnected) {
+          mode = null;
+          locked = null;
+          zeroStart = null;
+          lights = null;
+          odo = null;
+          trip = null;
+          battery = null;
+          speed = null;
         }
+        notifyListeners();
       }
       await Future.delayed(const Duration(seconds: 5));
     }
