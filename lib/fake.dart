@@ -25,17 +25,25 @@ class FakeFlutterReactiveBle implements FlutterReactiveBle {
   Stream<ConnectionStateUpdate> connectToDevice(
       {required String id, Map<Uuid, List<Uuid>>? servicesWithCharacteristicsToDiscover, Duration? connectionTimeout}) {
     return Stream.fromIterable([
-      const ConnectionStateUpdate(
-        connectionState: DeviceConnectionState.connecting,
-        deviceId: testDeviceId,
-        failure: null,
-      ),
-      const ConnectionStateUpdate(
-        connectionState: DeviceConnectionState.connected,
-        deviceId: testDeviceId,
-        failure: null,
-      ),
+      getFakeConnectionStateUpdate(DeviceConnectionState.connecting),
+      getFakeConnectionStateUpdate(DeviceConnectionState.connected),
     ]);
+  }
+
+
+  @override
+  Stream<List<int>> subscribeToCharacteristic(QualifiedCharacteristic characteristic) {
+    return Stream.fromIterable([
+      [1, 20, 1],
+    ]);
+  }
+
+  ConnectionStateUpdate getFakeConnectionStateUpdate(DeviceConnectionState deviceConnectionState) {
+    return ConnectionStateUpdate(
+      connectionState: deviceConnectionState,
+      deviceId: testDeviceId,
+      failure: null,
+    );
   }
 
   @override
@@ -43,8 +51,7 @@ class FakeFlutterReactiveBle implements FlutterReactiveBle {
     if (characteristic.deviceId == testDeviceId && characteristic.characteristicId == writeCharacteristicId[gTName] && value[0] == 0x55) {
       if (value[1] == 0x02 && value[2] == 0x05 && value[3] == 0x02) {
         return Future(() => null);
-      }
-      else if (value[1] == 0x05 && value[2] == 0x05 && value[3] == 0x01) {
+      } else if (value[1] == 0x05 && value[2] == 0x05 && value[3] == 0x01) {
         return Future(() => null);
       }
     }
@@ -55,7 +62,6 @@ class FakeFlutterReactiveBle implements FlutterReactiveBle {
   LogLevel logLevel = LogLevel.verbose;
 
   @override
-// TODO: implement characteristicValueStream
   Stream<CharacteristicValue> get characteristicValueStream => throw UnimplementedError();
 
   @override
@@ -70,7 +76,6 @@ class FakeFlutterReactiveBle implements FlutterReactiveBle {
       required Duration prescanDuration,
       Map<Uuid, List<Uuid>>? servicesWithCharacteristicsToDiscover,
       Duration? connectionTimeout}) {
-    // TODO: implement connectToAdvertisingDevice
     throw UnimplementedError();
   }
 
@@ -150,11 +155,7 @@ class FakeFlutterReactiveBle implements FlutterReactiveBle {
 // TODO: implement statusStream
   Stream<BleStatus> get statusStream => throw UnimplementedError();
 
-  @override
-  Stream<List<int>> subscribeToCharacteristic(QualifiedCharacteristic characteristic) {
-    // TODO: implement subscribeToCharacteristic
-    throw UnimplementedError();
-  }
+
 
   @override
   Future<void> writeCharacteristicWithoutResponse(QualifiedCharacteristic characteristic, {required List<int> value}) {

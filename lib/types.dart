@@ -26,3 +26,5 @@ var writeCharacteristicId = {
   gTName: Uuid.parse("0000ffe1-0000-1000-8000-00805f9b34fb"),
   gTSportName: Uuid.parse("0000ff02-0000-1000-8000-00805f9b34fb"),
 };
+
+enum ShortcutType { lock, unlock, setSpeed0, setSpeed2 }
