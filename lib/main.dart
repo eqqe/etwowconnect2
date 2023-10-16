@@ -134,7 +134,6 @@ class ScooterModel with ChangeNotifier {
         }
         notifyListeners();
       }
-      await Future.delayed(const Duration(seconds: 5));
     }
   }
 
