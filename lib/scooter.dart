@@ -93,9 +93,7 @@ class ScooterModel extends ScooterInfo with ChangeNotifier {
         serviceId: serviceId[deviceName]!, characteristicId: readCharacteristicId[deviceName]!, deviceId: deviceId!);
 
     while (true) {
-      await for (final update in _ble.connectToDevice(id: deviceId!, servicesWithCharacteristicsToDiscover: {
-        serviceId[deviceName]!: [readCharacteristicId[deviceName]!]
-      })) {
+      await for (final update in _ble.connectToDevice(id: deviceId!, connectionTimeout: const Duration(seconds: 10))) {
         connectionState = update.connectionState;
         if (connected) {
           await executeShortcut();
