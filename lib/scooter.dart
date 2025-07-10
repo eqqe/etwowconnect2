@@ -267,8 +267,14 @@ class ScooterModel extends ScooterInfo with ChangeNotifier {
       allValues.addAll(values);
       allValues.add(allValues.reduce((p, c) => p + c));
       try {
-        await _ble.writeCharacteristicWithResponse(characteristic, value: allValues);
+        if (Platform.isAndroid) {
+          await _ble.writeCharacteristicWithResponse(characteristic, value: allValues);
+        }
+        else {
+          await _ble.writeCharacteristicWithoutResponse(characteristic, value: allValues);
+        }
       } catch (e) {
+        toast('Could not write characteristic.');
         return false;
       }
       return true;
