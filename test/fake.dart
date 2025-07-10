@@ -182,6 +182,12 @@ class FakeFlutterReactiveBle implements FlutterReactiveBle {
     // TODO: implement writeCharacteristicWithoutResponse
     throw UnimplementedError();
   }
+  
+  @override
+  Future<int> readRssi(String deviceId) {
+    // TODO: implement readRssi
+    throw UnimplementedError();
+  }
 }
 
 ConnectionStateUpdate getFakeConnectionStateUpdate(DeviceConnectionState deviceConnectionState) {

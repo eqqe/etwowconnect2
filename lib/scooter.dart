@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:etwowconnect2/types.dart';
@@ -48,11 +49,61 @@ class ScooterModel extends ScooterInfo with ChangeNotifier {
   }
 
   Future<void> scan() async {
-    if (!Platform.environment.containsKey('FLUTTER_TEST') &&
-        (!await Permission.locationWhenInUse.request().isGranted ||
-            !await Permission.bluetoothScan.request().isGranted ||
-            !await Permission.bluetoothConnect.request().isGranted)) {
+    // Check if running in a test environment. If so, skip permission checks.
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      if (kDebugMode) {
+        print('Running in FLUTTER_TEST environment, skipping permission checks.');
+      }
       return;
+    }
+
+    // Request and check Location When In Use permission
+    var locationStatus = await Permission.locationWhenInUse.request();
+    if (!locationStatus.isGranted) {
+      // You can throw a more specific exception or handle it as needed
+      throw Exception('Location When In Use permission not granted.');
+    }
+    if (kDebugMode) {
+      print('Location When In Use permission granted.');
+    }
+
+
+    if (Platform.isAndroid) {
+        // For Android, request both Bluetooth Scan and Bluetooth Connect
+        var bluetoothScanStatus = await Permission.bluetoothScan.request();
+        if (!bluetoothScanStatus.isGranted) {
+          throw Exception('Bluetooth Scan permission not granted.');
+        }
+        if (kDebugMode) {
+          print('Bluetooth Scan permission granted.');
+        }
+
+        var bluetoothConnectStatus = await Permission.bluetoothConnect.request();
+        if (!bluetoothConnectStatus.isGranted) {
+          throw Exception('Bluetooth Connect permission not granted.');
+        }
+        if (kDebugMode) {
+          print('Bluetooth Connect permission granted.');
+        }
+      } else if (Platform.isIOS) {
+        // For iOS, only request the general Bluetooth permission
+        var bluetoothStatus = await Permission.bluetooth.request();
+        if (!bluetoothStatus.isGranted) {
+          throw Exception('Bluetooth permission not granted.');
+        }
+        if (kDebugMode) {
+          print('Bluetooth permission granted.');
+        }
+      } else {
+        // Handle other platforms if necessary, or throw an unsupported error
+        if (kDebugMode) {
+          print('Bluetooth permissions not explicitly handled for this platform.');
+        }
+      }
+
+    // If all checks pass, you can proceed with your application logic
+    if (kDebugMode) {
+      print('All required permissions are granted!');
     }
 
     if (!Platform.environment.containsKey('FLUTTER_TEST')) {
