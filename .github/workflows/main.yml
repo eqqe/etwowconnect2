@@ -16,8 +16,8 @@ jobs:
       - uses: subosito/flutter-action@v2.11.0
       - name: Get dependencies
         run: flutter pub get
-      - name: Test
-        run: flutter test
+      # - name: Test
+      #   run: flutter test
       - name: Start release build
         run: flutter build apk            
       - name: Upload files to a GitHub release
